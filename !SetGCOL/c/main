@@ -1,0 +1,772 @@
+/*******************************************************************************
+
+File        : c.main
+
+Date        : Sunday 16th May 2021
+
+Author      : Gavin Cawley
+
+Description : Application used to gain understanding of colourtran_setGCOL.
+
+To do       : (i) Re-implement dialogue as a standard window?
+
+              (ii) Both windows should appear/disappear together.
+
+              (iii) Allow pausing of animation, and pausing when not on-screen.
+
+History     : 16/05/2021 - v1.0 - basic working version
+
+*******************************************************************************/
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <math.h>
+                 
+#include "alarm.h"
+#include "bbc.h"
+#include "wimp.h"
+#include "wimpt.h"
+#include "resspr.h"
+#include "baricon.h"
+#include "res.h"
+#include "event.h"
+#include "menu.h"
+#include "dbox.h"
+#include "werr.h"
+#include "win.h"
+#include "template.h"
+#include "font.h"
+#include "colourtran.h"
+   
+#define APP_NAME "SetGCOL"
+#define MENU_ITEMS ">Info,Quit"
+                    
+#define IMENU_INFO 1
+#define IMENU_QUIT 2
+
+menu imenu;
+wimp_i selected = 0;
+
+wimp_w gui_handle;  
+                    
+
+#define PALETTE_ENTRY_GCOL  6
+#define PALETTE_ENTRY_RED   7
+#define PALETTE_ENTRY_GREEN 8
+#define PALETTE_ENTRY_BLUE  9
+#define PALETTE_ENTRY_WORD  10
+#define FLAG_FOREGROUND     11
+#define FLAG_BACKGROUND     12
+#define FLAG_ECF_ON         34
+#define FLAG_ECF_OFF        35
+#define FLAG_WORD           13
+#define GCOL_ACTION_SOURCE  14
+#define GCOL_ACTION_OR      15
+#define GCOL_ACTION_AND     16
+#define GCOL_ACTION_XOR     17
+#define GCOL_ACTION_NOT     18
+#define GCOL_ACTION_DEST    19
+#define GCOL_ACTION_AND_NOT 20
+#define GCOL_ACTION_OR_NOT  21
+#define GCOL_ACTION_WORD    22
+#define GCOL_WORD           23
+                       
+typedef struct DialogWorspaceStruct
+{
+   dbox dialog;
+
+   wimp_paletteword entry;
+
+   unsigned int flags;
+
+   unsigned int gcol_action;
+
+   int gcol;
+
+   char buffer[64];
+}
+DialogWorkspace;
+
+DialogWorkspace *ws;
+
+typedef struct
+{      
+   double x, y, r, dx, dy;
+}
+Circle;    
+
+typedef struct
+{         
+   int x0, y0, x1, y1;
+}
+Rectangle;         
+                        
+#define CIRCLES (8)
+
+Circle circle[CIRCLES];
+                                                      
+Rectangle redraw;
+
+int then;
+
+BOOL between(int x, int min, int max)
+{
+   return (x >= min) && (x <= max);
+}                     
+
+int sqrdist(int x0, int y0, int x1, int y1)
+{
+   return (x1 - x0)*(x1 - x0) + (y1 - y0)*(y1 - y0);
+}
+
+/*******************************************************************************
+
+Function    : intersects
+
+Parameters  : Circle    *c - pointer to a Circle struct
+              Rectangle *r - pointer to a Rectangle struct
+
+Returns     : BOOL
+
+Description : Returns TRUE if an intersection or overlap exists between the
+              specified Circle and Rectangle. 
+*******************************************************************************/                                                    
+                     
+BOOL intersects(Circle *c, Rectangle *r)
+{              
+   int cx = (int)c->x, cy = (int)c->y, cr = (int)c->r;
+                      
+   if (between(cx, r->x0-cr, r->x1+cr) && between(cy, r->y0, r->y1))
+   {                                 
+      return TRUE;
+   }
+
+   if (between(cx, r->x0, r->x1) && between(cy, r->y0-cr, r->y1+cr))
+   {                                 
+      return TRUE;
+   }
+               
+   int rsqr = cr*cr;
+                                       
+   if (sqrdist(cx, cy, r->x0, r->y0) <= rsqr)
+   {
+      return TRUE;
+   }
+    
+   if (sqrdist(cx, cy, r->x0, r->y1) <= rsqr)
+   {
+      return TRUE;
+   }
+
+   if (sqrdist(cx, cy, r->x1, r->y0) <= rsqr)
+   {
+      return TRUE;
+   }
+
+   if (sqrdist(cx, cy, r->x1, r->y1) <= rsqr)
+   {
+      return TRUE;
+   }
+
+   return FALSE;
+}
+
+void gui_redraw(wimp_w handle)
+{            
+   wimp_paletteword entry;
+
+   int gcol;
+   
+   BOOL more;
+ 
+   wimp_redrawstr r;
+
+   r.w = handle;
+
+   wimpt_noerr(wimp_redraw_wind(&r, &more));   
+            
+   while(more)
+   {           
+      // screen co-ordinates of the work area origin
+                                                          
+      int x = r.box.x0 - r.scx;
+      int y = r.box.y1 - r.scy;          
+
+      // work-area coordinates of the update rectangle
+
+      redraw.x0 = r.g.x0 - r.box.x0 + r.scx;
+      redraw.y0 = r.g.y0 - r.box.y1 + r.scy;
+      redraw.x1 = r.g.x1 - r.box.x0 + r.scx;
+      redraw.y1 = r.g.y1 - r.box.y1 + r.scy;
+
+      // redraw rectangles
+
+      entry.word = (int)0x0000FF00;
+      colourtran_setGCOL(entry, 0, 0, &(gcol));
+      bbc_rectanglefill(x + 0   + 95, y - 190 - 95, 190, 190);
+
+      entry.word = (int)0x00FF0000;
+      colourtran_setGCOL(entry, 0, 0, &(gcol));
+      bbc_rectanglefill(x + 380 + 95, y - 190 - 95, 190, 190);
+
+      entry.word = (int)0xFF000000;
+      colourtran_setGCOL(entry, 0, 0, &(gcol));
+      bbc_rectanglefill(x + 0   + 95, y - 570 - 95, 190, 190);
+
+      entry.word = (int)0xFFFFFF00;
+      colourtran_setGCOL(entry, 0, 0, &(gcol));
+      bbc_rectanglefill(x + 380 + 95, y - 570 - 95, 190, 190);
+
+      // work out which circles to redraw
+
+      colourtran_setGCOL(ws->entry, ws->flags, ws->gcol_action, &(ws->gcol));
+
+      for (int i = 0; i < CIRCLES; i++)
+      {  
+         if (intersects(&circle[i], &redraw))
+         {
+            bbc_circle(x + (int)circle[i].x, 
+                       y + (int)circle[i].y, 
+                       (int)circle[i].r);
+         }
+      }
+                                         
+      // see if there is another rectange to redraw
+
+      wimp_get_rectangle(&r, &more);
+   }        
+}
+
+void gui_open(wimp_openstr *openstr)
+{  
+   wimpt_noerr(wimp_open_wind(openstr));
+}
+
+void gui_eventHandler(wimp_eventstr *e, void *handle)
+{
+   switch(e->e)
+   {
+      case wimp_EREDRAW:
+      {
+         gui_redraw(e->data.o.w);
+      
+         break;
+      }
+      case wimp_EOPEN:   // maximise or minimise window 
+      {
+         gui_open(&(e->data.o));
+      
+         break;
+      }
+      case wimp_ECLOSE:   // close window
+      {
+         wimpt_noerr(wimp_close_wind(e->data.o.w));
+       
+         break;
+      }
+   }
+}
+                     
+void gui_create(void)
+{                        
+   wimp_wind *window = template_syshandle("Window");
+
+   if (window == 0)
+   {
+      exit(EXIT_FAILURE);
+   }
+
+   if (wimpt_complain(wimp_create_wind(window, &gui_handle)) != 0)
+   {
+      exit(EXIT_FAILURE);
+   }
+
+   win_register_event_handler(gui_handle, gui_eventHandler, 0);
+
+   // initialise circles
+
+   for (int i = 0; i < CIRCLES; i++)
+   {             
+      double velocity   = (double)(256 - rand()%768);
+      double direction  = 2*3.14159*rand()/(double)RAND_MAX;
+
+      circle[i].x       = (double)+380;
+      circle[i].y       = (double)-380;
+      circle[i].r       = (double)(32  + rand()%64);                                  
+      circle[i].dx      = velocity*cos(direction);
+      circle[i].dy      = velocity*sin(direction);
+   }
+}
+
+void gui_closeDown(void)
+{
+}
+
+void gui_force_redraw(void)
+{
+   wimp_redrawstr r;
+
+   r.w      = gui_handle;
+   r.box.x0 = 0;
+   r.box.y0 = -760;
+   r.box.x1 = +760;
+   r.box.y1 = 0;
+
+   wimp_force_redraw(&r);
+}
+
+void gui_update(int now, void *handle)
+{                        
+   double delta = 0.01*alarm_timedifference(then, now);
+
+   // update each circle in turn
+
+   for (int i = 0; i < CIRCLES; i++)
+   {                          
+      circle[i].x = circle[i].x + delta*circle[i].dx;
+      circle[i].y = circle[i].y + delta*circle[i].dy;
+
+      if (circle[i].x - circle[i].r < 0.0)
+      {                       
+         if (circle[i].dx < 0)
+         {
+            circle[i].dx = -circle[i].dx;
+         }
+      }
+      
+      if (circle[i].x + circle[i].r > 760.0)
+      {                       
+         if (circle[i].dx > 0)
+         {
+            circle[i].dx = -circle[i].dx;
+         }
+      }
+
+      if (circle[i].y - circle[i].r < -760.0)
+      {                       
+         if (circle[i].dy < 0)
+         {
+            circle[i].dy = -circle[i].dy;
+         }
+      }
+
+      if (circle[i].y + circle[i].r > 0)
+      {                       
+         if (circle[i].dy > 0)
+         {
+            circle[i].dy = -circle[i].dy;
+         }
+
+      } 
+   }
+                    
+   // force redraw of window
+
+   gui_force_redraw();
+                                              
+   // reset alarm
+
+   alarm_set(now + 4, gui_update, NULL);
+
+   then = now;
+}
+
+static void info_about(void)
+{
+   dbox d = dbox_new("ProgInfo");
+
+   if (d != NULL)
+   {
+      dbox_show(d);        
+      dbox_fillin(d);       
+      dbox_dispose(&d);     
+   }
+}
+
+static menu ipremenuproc(void *handle)
+{
+   return imenu;
+}
+
+static void imenuproc(void *handle, char *hit)
+{
+   switch (hit[0])  
+   {                
+      case IMENU_INFO:
+      {
+         info_about();
+
+         break;
+      }
+      case IMENU_QUIT:
+      {
+         exit(EXIT_SUCCESS);
+
+         break;
+      }
+   }
+}
+
+void setWordField(int field, unsigned int word)
+{
+   snprintf(ws->buffer, 63, "0x%08X", word);
+   
+   dbox_setfield(ws->dialog, field, ws->buffer);
+}
+
+void setByteField(int field, unsigned char gcol)
+{
+   snprintf(ws->buffer, 63, "0x%02X", gcol);
+   
+   dbox_setfield(ws->dialog, field, ws->buffer);
+}
+
+BOOL raw_event_handler(dbox dialog, void *event, void *handle)
+{                                                            
+   wimp_eventstr *e = event; 
+
+   switch(e->e)
+   {
+      case wimp_EBUT:   // mouse button change
+      {                                      
+         wimp_mousestr *ms = &e->data.but.m;
+                        
+         // change validation string
+           
+         switch (ms->i)
+         {
+            case FLAG_FOREGROUND:
+            {
+               ws->flags = ws->flags & 0xFFFFFF7F;
+
+               setWordField(FLAG_WORD, ws->flags);
+
+               break;
+            }
+            case FLAG_BACKGROUND:
+            {                              
+               ws->flags = ws->flags | 0x00000080;
+
+               setWordField(FLAG_WORD, ws->flags);
+
+               break;
+            }
+            case FLAG_ECF_OFF:
+            {
+               ws->flags = ws->flags & 0xFFFFFEFF;
+
+               setWordField(FLAG_WORD, ws->flags);
+
+               break;
+            }
+            case FLAG_ECF_ON:
+            {                              
+               ws->flags = ws->flags | 0x00000100;
+
+               setWordField(FLAG_WORD, ws->flags);
+
+               break;
+            }
+            case GCOL_ACTION_SOURCE:
+            {                              
+               ws->gcol_action = (ws->gcol_action & 0xFFFFFFF8) | 0x0;
+
+               setWordField(GCOL_ACTION_WORD, ws->gcol_action);
+
+               break;
+            }
+            case GCOL_ACTION_OR:
+            {                              
+               ws->gcol_action = (ws->gcol_action & 0xFFFFFFF8) | 0x1;
+
+               setWordField(GCOL_ACTION_WORD, ws->gcol_action);
+
+               break;
+            }
+            case GCOL_ACTION_AND:
+            {                              
+               ws->gcol_action = (ws->gcol_action & 0xFFFFFFF8) | 0x2;
+
+               setWordField(GCOL_ACTION_WORD, ws->gcol_action);
+
+               break;
+            }
+            case GCOL_ACTION_XOR:
+            {                              
+               ws->gcol_action = (ws->gcol_action & 0xFFFFFFF8) | 0x3;
+
+               setWordField(GCOL_ACTION_WORD, ws->gcol_action);
+
+               break;
+            }
+            case GCOL_ACTION_NOT:
+            {                              
+               ws->gcol_action = (ws->gcol_action & 0xFFFFFFF8) | 0x4;
+
+               setWordField(GCOL_ACTION_WORD, ws->gcol_action);
+
+               break;
+            }
+            case GCOL_ACTION_DEST:
+            {                              
+               ws->gcol_action = (ws->gcol_action & 0xFFFFFFF8) | 0x5;
+
+               setWordField(GCOL_ACTION_WORD, ws->gcol_action);
+
+               break;
+            }
+            case GCOL_ACTION_AND_NOT:
+            {                              
+               ws->gcol_action = (ws->gcol_action & 0xFFFFFFF8) | 0x6;
+
+               setWordField(GCOL_ACTION_WORD, ws->gcol_action);
+
+               break;
+            }
+            case GCOL_ACTION_OR_NOT:
+            {                              
+               ws->gcol_action = (ws->gcol_action & 0xFFFFFFF8) | 0x7;
+
+               setWordField(GCOL_ACTION_WORD, ws->gcol_action);
+
+               break;
+            }
+         }    
+
+         break;
+      }         
+      case wimp_EKEY:
+      {
+         wimp_caretstr *cs = &e->data.c;
+
+         switch (cs->i)
+         {
+            case PALETTE_ENTRY_GCOL:
+            {  
+               dbox_getfield(dialog, PALETTE_ENTRY_GCOL, ws->buffer, 64);
+               ws->entry.bytes.gcol = (char)strtoul(ws->buffer, NULL, 0);
+
+               setWordField(PALETTE_ENTRY_WORD, ws->entry.word);
+               setByteField(PALETTE_ENTRY_GCOL, ws->entry.bytes.gcol);
+
+               break;
+            }
+            case PALETTE_ENTRY_RED:
+            {
+               dbox_getfield(dialog, PALETTE_ENTRY_RED, ws->buffer, 64);
+
+               ws->entry.bytes.red = (char)strtoul(ws->buffer, NULL, 0);
+
+               setWordField(PALETTE_ENTRY_WORD, ws->entry.word);
+               setByteField(PALETTE_ENTRY_RED,  ws->entry.bytes.red);
+
+               break;
+            }
+            case PALETTE_ENTRY_GREEN:
+            {
+               dbox_getfield(dialog, PALETTE_ENTRY_GREEN, ws->buffer, 64);
+
+               ws->entry.bytes.green = (char)strtoul(ws->buffer, NULL, 0);
+
+               setWordField(PALETTE_ENTRY_WORD,  ws->entry.word);
+               setByteField(PALETTE_ENTRY_GREEN, ws->entry.bytes.green);
+
+               break;
+            } 
+            case PALETTE_ENTRY_BLUE:
+            {
+               dbox_getfield(dialog, PALETTE_ENTRY_BLUE, ws->buffer, 64);
+
+               ws->entry.bytes.blue = (char)strtoul(ws->buffer, NULL, 0);
+
+               setWordField(PALETTE_ENTRY_WORD, ws->entry.word);
+               setByteField(PALETTE_ENTRY_BLUE, ws->entry.bytes.blue);
+
+               break;
+            }
+            case PALETTE_ENTRY_WORD:
+            {
+               dbox_getfield(dialog, PALETTE_ENTRY_WORD, ws->buffer, 64);
+
+               ws->entry.word = (int)strtoul(ws->buffer, NULL, 0);
+
+               setWordField(PALETTE_ENTRY_WORD,  ws->entry.word);
+               setByteField(PALETTE_ENTRY_GCOL,  ws->entry.bytes.gcol);
+               setByteField(PALETTE_ENTRY_RED,   ws->entry.bytes.red);
+               setByteField(PALETTE_ENTRY_GREEN, ws->entry.bytes.green);
+               setByteField(PALETTE_ENTRY_BLUE,  ws->entry.bytes.blue);
+
+               break;
+            }
+            case FLAG_WORD: 
+            {     
+               dbox_getfield(dialog, FLAG_WORD, ws->buffer, 64);
+
+               ws->flags = (int)strtoul(ws->buffer, NULL, 0);
+                                           
+               if (ws->flags & 0x00000080)
+               {
+                  dbox_setnumeric(dialog, FLAG_FOREGROUND, 0); 
+                  dbox_setnumeric(dialog, FLAG_BACKGROUND, 1); 
+               }
+               else
+               {
+                  dbox_setnumeric(dialog, FLAG_FOREGROUND, 1); 
+                  dbox_setnumeric(dialog, FLAG_BACKGROUND, 0); 
+               }
+
+               if (ws->flags & 0x00000100)
+               {
+                  dbox_setnumeric(dialog, FLAG_ECF_OFF, 0); 
+                  dbox_setnumeric(dialog, FLAG_ECF_ON,  1); 
+               }
+               else
+               {
+                  dbox_setnumeric(dialog, FLAG_ECF_OFF, 1); 
+                  dbox_setnumeric(dialog, FLAG_ECF_ON,  0); 
+               }
+
+               setWordField(FLAG_WORD,  ws->flags);
+
+               break;
+            }
+            case GCOL_ACTION_WORD:
+            {
+               dbox_getfield(dialog, GCOL_ACTION_WORD, ws->buffer, 64);
+
+               ws->gcol_action = (int)strtoul(ws->buffer, NULL, 0);
+                                                                
+               for (int i = 0; i < 8; i++)
+               {
+                  if (i == (ws->gcol_action & 0x7))
+                  {
+                     dbox_setnumeric(dialog, i + GCOL_ACTION_SOURCE, 1); 
+                  }
+                  else
+                  {
+                     dbox_setnumeric(dialog, i + GCOL_ACTION_SOURCE, 0); 
+                  }
+               }
+
+               setWordField(GCOL_ACTION_WORD,  ws->gcol_action);
+
+               break;
+            }          
+         }
+
+         break;
+      }
+   }   
+
+   colourtran_setGCOL(ws->entry, ws->flags, ws->gcol_action, &(ws->gcol));
+               
+   setWordField(GCOL_WORD,  ws->gcol);
+
+   return FALSE;
+}
+
+static void icon_left_click(wimp_i icon)
+{
+   dbox dialog;
+
+   BOOL filling = TRUE;
+
+   dialog = dbox_new("Dialog");    
+
+   // initialise workspace and add raw event handler 
+
+   ws = (DialogWorkspace*)malloc(sizeof(DialogWorkspace));
+
+   ws->dialog = dialog;
+              
+   dbox_getfield(dialog, PALETTE_ENTRY_WORD, ws->buffer, 64);
+   ws->entry.word = (int)strtoul(ws->buffer, NULL, 0);
+
+   dbox_getfield(dialog, FLAG_WORD, ws->buffer, 64);
+   ws->flags = (int)strtoul(ws->buffer, NULL, 0);
+
+   dbox_getfield(dialog, GCOL_ACTION_WORD, ws->buffer, 64);
+   ws->gcol_action = (int)strtoul(ws->buffer, NULL, 0);
+
+   dbox_raw_eventhandler(dialog, raw_event_handler, NULL);
+
+   // open window
+
+   wimp_wstate win_state;
+
+   wimpt_complain(wimp_get_wind_state(gui_handle, &win_state));
+
+   gui_open(&(win_state.o));
+
+   // display dialogue box and process events until dismissed
+
+   dbox_showstatic(dialog);
+
+   while (filling)
+   {
+      wimp_i icon = dbox_fillin(dialog);
+
+      switch (icon)
+      {
+         case dbox_CLOSE:
+         {
+            filling = FALSE;
+
+            break;
+         }
+      }
+   }
+
+   dbox_dispose(&dialog);   
+}
+
+int main(void)
+{
+   wimpt_init(APP_NAME);
+
+   res_init(APP_NAME);   
+
+   template_init();              
+
+   dbox_init();     
+
+   gui_create();
+
+   baricon("!SetGCOL", (int)resspr_area(), icon_left_click);
+
+   imenu = menu_new(APP_NAME, MENU_ITEMS);
+                    
+   if (imenu == NULL)
+   {
+      return EXIT_FAILURE;
+   }
+
+   if (!event_attachmenumaker(win_ICONBAR, ipremenuproc, imenuproc, 0))
+   {
+      return EXIT_FAILURE;
+   }                    
+
+   // start animation
+
+   alarm_init();
+
+   then = alarm_timenow();
+
+   alarm_set(then + 4, gui_update, NULL);
+
+   // main even processing loop
+
+   while (TRUE) 
+   {
+      event_process();
+   }
+                    
+   gui_closeDown();
+
+   wimp_closedown();
+
+   return EXIT_SUCCESS;
+}
+
+/******************************************************************************/

@@ -1,0 +1,677 @@
+/*******************************************************************************
+
+File        : c.main
+
+Date        : Sunday 9th May 2021
+
+Author      : Gavin Cawley
+
+Description : Application used to gain understanding of colourtran_setGCOL.
+
+History     : 09/05/2021 - v1.0 - basic working version
+
+*******************************************************************************/
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+                 
+#include "bbc.h"
+#include "wimp.h"
+#include "wimpt.h"
+#include "resspr.h"
+#include "baricon.h"
+#include "res.h"
+#include "event.h"
+#include "menu.h"
+#include "dbox.h"
+#include "werr.h"
+#include "win.h"
+#include "template.h"
+#include "font.h"
+#include "colourtran.h"
+   
+#define APP_NAME "SetGCOL"
+#define MENU_ITEMS ">Info,Quit"
+                    
+#define IMENU_INFO 1
+#define IMENU_QUIT 2
+
+menu imenu;
+wimp_i selected = 0;
+
+wimp_w gui_handle, pane_handle;
+
+void gui_setText(char *str);
+
+void pane_mouse_click_handler(wimp_mousestr *ms, wimp_bbits mbits)
+{     
+   char *str;
+                                
+   wimp_icon info;
+                   
+   // change validation string
+
+   if (ms->i != -1 && ms->i < 9)
+   {     
+      wimp_get_icon_info(pane_handle, selected, &info);
+
+      str = info.data.indirecttext.validstring;
+      
+      str[1] = '0';
+
+      wimp_get_icon_info(pane_handle, ms->i, &info);
+
+      str = info.data.indirecttext.validstring;
+      
+      str[1] = '4';
+
+      selected = ms->i;
+
+      switch (ms->i)
+      {
+         case 0: gui_setText("White"); break; 
+         case 1: gui_setText("Dark blue"); break;
+         case 2: gui_setText("Yellow"); break;
+         case 3: gui_setText("Light green"); break;
+         case 4: gui_setText("Red"); break;
+         case 5: gui_setText("Beige"); break;
+         case 6: gui_setText("Dark green"); break;
+         case 7: gui_setText("Orange"); break;
+         case 8: gui_setText("Light blue"); break;
+      }
+   } 
+
+   // redraw the whole window (could just redraw the icon that was clicked)
+     
+   wimp_redrawstr r;
+
+   r.w      = pane_handle;
+   r.box.x0 = 0;
+   r.box.y0 = -192;
+   r.box.x1 = 1344;
+   r.box.y1 = 0;
+
+   wimp_force_redraw(&r);
+}
+
+void pane_eventHandler(wimp_eventstr *e, void *handle)
+{
+   switch(e->e)
+   {
+      case wimp_EOPEN:   // maximise or minimise the window 
+      {                                          
+         wimpt_noerr(wimp_open_wind(&e->data.o));
+
+         break;
+      }  
+      case wimp_ECLOSE:   // close window
+      {
+         wimpt_noerr(wimp_close_wind(e->data.o.w));
+        
+         break;
+      }
+      case wimp_EBUT:   // mouse button change
+      {                                      
+         pane_mouse_click_handler(&(e->data.but.m), e->data.but.b);
+
+         break;
+      }
+   }
+}
+
+void pane_create(void)
+{                        
+   wimp_wind *window = template_syshandle("pane");
+
+   if (window == 0)
+   {
+      exit(EXIT_FAILURE);
+   }
+
+   if (wimpt_complain(wimp_create_wind(window, &pane_handle)) != 0)
+   {
+      exit(EXIT_FAILURE);
+   }
+
+   win_register_event_handler(pane_handle, pane_eventHandler, 0);
+}
+
+void gui_setText(char *str)
+{                 
+   wimp_icon info;
+
+   wimp_get_icon_info(gui_handle, 0, &info);
+
+   sprintf(info.data.indirecttext.buffer, "%s", str);
+
+   // redraw the whole window
+     
+   wimp_redrawstr r;
+
+   r.w      = gui_handle;
+   r.box.x0 = 0;
+   r.box.y0 = -480;
+   r.box.x1 = 720;
+   r.box.y1 = 0;
+
+   wimp_force_redraw(&r);
+}
+
+void gui_mouse_click_handler(wimp_mousestr *ms, wimp_bbits mbits)
+{     
+   char *str;
+                                
+   wimp_icon info;
+
+   wimp_get_icon_info(gui_handle, 0, &info);
+
+   str = info.data.indirecttext.buffer;
+
+   gui_setText(str[0] == 'b' ? "foo!" : "bar!");
+}
+
+void gui_open(wimp_openstr *openstr)
+{  
+   // open the dialog box at the appropriate level
+
+   wimpt_noerr(wimp_open_wind(openstr));         
+
+   // open the pane at that level                       
+   
+   wimp_wstate p_state;
+
+   if (wimpt_complain(wimp_get_wind_state(pane_handle, &p_state)) == 0)
+   {
+      p_state.o.behind = openstr->behind;     
+
+      // place the pane relatve to the visible area of the dialog box
+                                              
+      p_state.o.box.x0 = openstr->box.x0 + 48;
+      p_state.o.box.y0 = openstr->box.y1 - 48 - 192;
+      p_state.o.box.x1 = openstr->box.x0 + 48 + 624;
+      p_state.o.box.y1 = openstr->box.y1 - 48;       
+       
+      wimpt_noerr(wimp_open_wind(&p_state.o));
+   }
+            
+   // re-open dialog box undeneath the pane
+                                        
+   openstr->behind = pane_handle;
+   wimpt_noerr(wimp_open_wind(openstr));
+}
+
+void gui_eventHandler(wimp_eventstr *e, void *handle)
+{
+   switch(e->e)
+   {
+      case wimp_EOPEN:   // maximise or minimise window 
+      {
+         gui_open(&(e->data.o));
+         
+         break;
+      }
+      case wimp_ECLOSE:   // close window
+      {
+         wimpt_noerr(wimp_close_wind(e->data.o.w));
+         wimpt_noerr(wimp_close_wind(pane_handle));
+      
+         break;
+      }
+      case wimp_EBUT:   // mouse button change
+      {                                      
+         gui_mouse_click_handler(&(e->data.but.m), e->data.but.b);
+
+         break;
+      }
+   }
+}
+           
+void gui_create(void)
+{                        
+   wimp_wind *window = template_syshandle("Window");
+
+   if (window == 0)
+   {
+      exit(EXIT_FAILURE);
+   }
+
+   if (wimpt_complain(wimp_create_wind(window, &gui_handle)) != 0)
+   {
+      exit(EXIT_FAILURE);
+   }
+
+   win_register_event_handler(gui_handle, gui_eventHandler, 0);
+
+   char *str;
+                                
+   wimp_icon info;
+
+   selected = 0;
+
+   wimp_get_icon_info(gui_handle, selected, &info);
+
+   str = info.data.indirecttext.validstring;
+      
+   str[1] = '4';
+}
+
+void gui_closeDown(void)
+{
+}
+
+static void info_about(void)
+{
+   dbox d = dbox_new("ProgInfo");
+
+   if (d != NULL)
+   {
+      dbox_show(d);        
+      dbox_fillin(d);       
+      dbox_dispose(&d);     
+   }
+}
+
+static menu ipremenuproc(void *handle)
+{
+   return imenu;
+}
+
+static void imenuproc(void *handle, char *hit)
+{
+   switch (hit[0])  
+   {                
+      case IMENU_INFO:
+      {
+         info_about();
+
+         break;
+      }
+      case IMENU_QUIT:
+      {
+         exit(EXIT_SUCCESS);
+
+         break;
+      }
+   }
+}
+
+#define PALETTE_ENTRY_GCOL  6
+#define PALETTE_ENTRY_RED   7
+#define PALETTE_ENTRY_GREEN 8
+#define PALETTE_ENTRY_BLUE  9
+#define PALETTE_ENTRY_WORD  10
+#define FLAG_FOREGROUND     11
+#define FLAG_BACKGROUND     12
+#define FLAG_ECF_ON         34
+#define FLAG_ECF_OFF        35
+#define FLAG_WORD           13
+#define GCOL_ACTION_SOURCE  14
+#define GCOL_ACTION_OR      15
+#define GCOL_ACTION_AND     16
+#define GCOL_ACTION_XOR     17
+#define GCOL_ACTION_NOT     18
+#define GCOL_ACTION_DEST    19
+#define GCOL_ACTION_AND_NOT 20
+#define GCOL_ACTION_OR_NOT  21
+#define GCOL_ACTION_WORD    22
+#define GCOL_WORD           23
+                       
+typedef struct DialogWorspaceStruct
+{
+   dbox dialog;
+
+   wimp_paletteword entry;
+
+   unsigned int flags;
+
+   unsigned int gcol_action;
+
+   char buffer[64];
+}
+DialogWorkspace;
+
+void setWordField(int field, unsigned int word, DialogWorkspace *ws)
+{
+   snprintf(ws->buffer, 63, "0x%08X", word);
+   
+   dbox_setfield(ws->dialog, field, ws->buffer);
+}
+
+void setByteField(int field, unsigned char gcol, DialogWorkspace *ws)
+{
+   snprintf(ws->buffer, 63, "0x%02X", gcol);
+   
+   dbox_setfield(ws->dialog, field, ws->buffer);
+}
+
+BOOL raw_event_handler(dbox dialog, void *event, void *handle)
+{                                                            
+   DialogWorkspace *ws = (DialogWorkspace*)handle;
+
+   wimp_eventstr *e = event; 
+
+   switch(e->e)
+   {
+      case wimp_EBUT:   // mouse button change
+      {                                      
+         wimp_mousestr *ms = &e->data.but.m;
+                        
+         // change validation string
+           
+         switch (ms->i)
+         {
+            case FLAG_FOREGROUND:
+            {
+               ws->flags = ws->flags & 0xFFFFFF7F;
+
+               setWordField(FLAG_WORD, ws->flags, ws);
+
+               break;
+            }
+            case FLAG_BACKGROUND:
+            {                              
+               ws->flags = ws->flags | 0x00000080;
+
+               setWordField(FLAG_WORD, ws->flags, ws);
+
+               break;
+            }
+            case FLAG_ECF_OFF:
+            {
+               ws->flags = ws->flags & 0xFFFFFEFF;
+
+               setWordField(FLAG_WORD, ws->flags, ws);
+
+               break;
+            }
+            case FLAG_ECF_ON:
+            {                              
+               ws->flags = ws->flags | 0x00000100;
+
+               setWordField(FLAG_WORD, ws->flags, ws);
+
+               break;
+            }
+            case GCOL_ACTION_SOURCE:
+            {                              
+               ws->gcol_action = (ws->gcol_action & 0xFFFFFFF8) | 0x0;
+
+               setWordField(GCOL_ACTION_WORD, ws->gcol_action, ws);
+
+               break;
+            }
+            case GCOL_ACTION_OR:
+            {                              
+               ws->gcol_action = (ws->gcol_action & 0xFFFFFFF8) | 0x1;
+
+               setWordField(GCOL_ACTION_WORD, ws->gcol_action, ws);
+
+               break;
+            }
+            case GCOL_ACTION_AND:
+            {                              
+               ws->gcol_action = (ws->gcol_action & 0xFFFFFFF8) | 0x2;
+
+               setWordField(GCOL_ACTION_WORD, ws->gcol_action, ws);
+
+               break;
+            }
+            case GCOL_ACTION_XOR:
+            {                              
+               ws->gcol_action = (ws->gcol_action & 0xFFFFFFF8) | 0x3;
+
+               setWordField(GCOL_ACTION_WORD, ws->gcol_action, ws);
+
+               break;
+            }
+            case GCOL_ACTION_NOT:
+            {                              
+               ws->gcol_action = (ws->gcol_action & 0xFFFFFFF8) | 0x4;
+
+               setWordField(GCOL_ACTION_WORD, ws->gcol_action, ws);
+
+               break;
+            }
+            case GCOL_ACTION_DEST:
+            {                              
+               ws->gcol_action = (ws->gcol_action & 0xFFFFFFF8) | 0x5;
+
+               setWordField(GCOL_ACTION_WORD, ws->gcol_action, ws);
+
+               break;
+            }
+            case GCOL_ACTION_AND_NOT:
+            {                              
+               ws->gcol_action = (ws->gcol_action & 0xFFFFFFF8) | 0x6;
+
+               setWordField(GCOL_ACTION_WORD, ws->gcol_action, ws);
+
+               break;
+            }
+            case GCOL_ACTION_OR_NOT:
+            {                              
+               ws->gcol_action = (ws->gcol_action & 0xFFFFFFF8) | 0x7;
+
+               setWordField(GCOL_ACTION_WORD, ws->gcol_action, ws);
+
+               break;
+            }
+         }    
+
+         break;
+      }         
+      case wimp_EKEY:
+      {
+         wimp_caretstr *cs = &e->data.c;
+
+         switch (cs->i)
+         {
+            case PALETTE_ENTRY_GCOL:
+            {  
+               dbox_getfield(dialog, PALETTE_ENTRY_GCOL, ws->buffer, 64);
+               ws->entry.bytes.gcol = (char)strtoul(ws->buffer, NULL, 0);
+
+               setWordField(PALETTE_ENTRY_WORD, ws->entry.word,       ws);
+               setByteField(PALETTE_ENTRY_GCOL, ws->entry.bytes.gcol, ws);
+
+               break;
+            }
+            case PALETTE_ENTRY_RED:
+            {
+               dbox_getfield(dialog, PALETTE_ENTRY_RED, ws->buffer, 64);
+
+               ws->entry.bytes.red = (char)strtoul(ws->buffer, NULL, 0);
+
+               setWordField(PALETTE_ENTRY_WORD, ws->entry.word,      ws);
+               setByteField(PALETTE_ENTRY_RED,  ws->entry.bytes.red, ws);
+
+               break;
+            }
+            case PALETTE_ENTRY_GREEN:
+            {
+               dbox_getfield(dialog, PALETTE_ENTRY_GREEN, ws->buffer, 64);
+
+               ws->entry.bytes.green = (char)strtoul(ws->buffer, NULL, 0);
+
+               setWordField(PALETTE_ENTRY_WORD,  ws->entry.word,        ws);
+               setByteField(PALETTE_ENTRY_GREEN, ws->entry.bytes.green, ws);
+
+               break;
+            } 
+            case PALETTE_ENTRY_BLUE:
+            {
+               dbox_getfield(dialog, PALETTE_ENTRY_BLUE, ws->buffer, 64);
+
+               ws->entry.bytes.blue = (char)strtoul(ws->buffer, NULL, 0);
+
+               setWordField(PALETTE_ENTRY_WORD, ws->entry.word,       ws);
+               setByteField(PALETTE_ENTRY_BLUE, ws->entry.bytes.blue, ws);
+
+               break;
+            }
+            case PALETTE_ENTRY_WORD:
+            {
+               dbox_getfield(dialog, PALETTE_ENTRY_WORD, ws->buffer, 64);
+
+               ws->entry.word = (int)strtoul(ws->buffer, NULL, 0);
+
+               setWordField(PALETTE_ENTRY_WORD,  ws->entry.word,        ws);
+               setByteField(PALETTE_ENTRY_GCOL,  ws->entry.bytes.gcol,  ws);
+               setByteField(PALETTE_ENTRY_RED,   ws->entry.bytes.red,   ws);
+               setByteField(PALETTE_ENTRY_GREEN, ws->entry.bytes.green, ws);
+               setByteField(PALETTE_ENTRY_BLUE,  ws->entry.bytes.blue,  ws);
+
+               break;
+            }
+            case FLAG_WORD: 
+            {     
+               dbox_getfield(dialog, FLAG_WORD, ws->buffer, 64);
+
+               ws->flags = (int)strtoul(ws->buffer, NULL, 0);
+                                           
+               if (ws->flags & 0x00000080)
+               {
+                  dbox_setnumeric(dialog, FLAG_FOREGROUND, 0); 
+                  dbox_setnumeric(dialog, FLAG_BACKGROUND, 1); 
+               }
+               else
+               {
+                  dbox_setnumeric(dialog, FLAG_FOREGROUND, 1); 
+                  dbox_setnumeric(dialog, FLAG_BACKGROUND, 0); 
+               }
+
+               if (ws->flags & 0x00000100)
+               {
+                  dbox_setnumeric(dialog, FLAG_ECF_OFF, 0); 
+                  dbox_setnumeric(dialog, FLAG_ECF_ON,  1); 
+               }
+               else
+               {
+                  dbox_setnumeric(dialog, FLAG_ECF_OFF, 1); 
+                  dbox_setnumeric(dialog, FLAG_ECF_ON,  0); 
+               }
+
+               setWordField(FLAG_WORD,  ws->flags, ws);
+
+               break;
+            }
+            case GCOL_ACTION_WORD:
+            {
+               dbox_getfield(dialog, GCOL_ACTION_WORD, ws->buffer, 64);
+
+               ws->gcol_action = (int)strtoul(ws->buffer, NULL, 0);
+                                                                
+               for (int i = 0; i < 8; i++)
+               {
+                  if (i == (ws->gcol_action & 0x7))
+                  {
+                     dbox_setnumeric(dialog, i + GCOL_ACTION_SOURCE, 1); 
+                  }
+                  else
+                  {
+                     dbox_setnumeric(dialog, i + GCOL_ACTION_SOURCE, 0); 
+                  }
+               }
+
+               setWordField(GCOL_ACTION_WORD,  ws->gcol_action, ws);
+
+               break;
+            }          
+         }
+
+         break;
+      }
+   }   
+
+   return FALSE;
+}
+
+static void icon_left_click(wimp_i icon)
+{
+   dbox dialog;
+
+   BOOL filling = TRUE;
+
+   dialog = dbox_new("Dialog");    
+
+   // initialise workspace and add raw event handler 
+
+   DialogWorkspace *ws = (DialogWorkspace*)malloc(sizeof(DialogWorkspace));
+
+   ws->dialog = dialog;
+              
+   dbox_getfield(dialog, PALETTE_ENTRY_WORD, ws->buffer, 64);
+   ws->entry.word = (int)strtoul(ws->buffer, NULL, 0);
+
+   dbox_getfield(dialog, FLAG_WORD, ws->buffer, 64);
+   ws->flags = (int)strtoul(ws->buffer, NULL, 0);
+
+   dbox_getfield(dialog, GCOL_ACTION_WORD, ws->buffer, 64);
+   ws->gcol_action = (int)strtoul(ws->buffer, NULL, 0);
+
+   dbox_raw_eventhandler(dialog, raw_event_handler, (void*)ws);
+
+   // display dialogue box and process events until dismissed
+
+   dbox_showstatic(dialog);
+
+   while (filling)
+   {
+      wimp_i icon = dbox_fillin(dialog);
+
+      switch (icon)
+      {
+         case dbox_CLOSE:
+         {
+            filling = FALSE;
+
+            break;
+         }
+      }
+   }
+
+   dbox_dispose(&dialog);   
+}
+
+int main(void)
+{
+   wimpt_init(APP_NAME);
+
+   res_init(APP_NAME);   
+
+   template_init();              
+
+   dbox_init();     
+
+   gui_create();
+
+   baricon("!SetGCOL", (int)resspr_area(), icon_left_click);
+
+   imenu = menu_new(APP_NAME, MENU_ITEMS);
+                    
+   if (imenu == NULL)
+   {
+      return EXIT_FAILURE;
+   }
+
+   if (!event_attachmenumaker(win_ICONBAR, ipremenuproc, imenuproc, 0))
+   {
+      return EXIT_FAILURE;
+   }                    
+
+   // main even processing loop
+
+   while (TRUE) 
+   {
+      event_process();
+   }
+                    
+   gui_closeDown();
+
+   wimp_closedown();
+
+   return EXIT_SUCCESS;
+}
+
+/******************************************************************************/
