@@ -11,7 +11,7 @@ LibFileflags = -c -o $@
 Squeezeflags = -o $@
 ModSqzflags = -o $@
 
-OBJS = @.o.main <LibSource$Dir>.Lib RISC_OSLib:o.risc_oslib C:o.stubs
+OBJS = @.o.dialogbox @.o.geometry @.o.graphicswin @.o.main <LibSource$Dir>.Lib RISC_OSLib:o.risc_oslib C:o.stubs
 
 # Final targets:
 @.application: $(OBJS)
@@ -22,10 +22,17 @@ OBJS = @.o.main <LibSource$Dir>.Lib RISC_OSLib:o.risc_oslib C:o.stubs
 
 # Static dependencies:
 
-@.o.main:  @.c.main 
+@.o.dialogbox: @.h.geometry @.h.graphicswin @.h.dialogbox @.c.geometry 
+        cc $(ccflags) -o @.o.dialogbox @.c.dialogbox 
+
+@.o.geometry: @.h.geometry @.c.geometry 
+        cc $(ccflags) -o @.o.geometry @.c.geometry 
+
+@.o.graphicswin: @.h.geometry @.h.graphicswin @.c.graphicswin 
+        cc $(ccflags) -o @.o.graphicswin @.c.graphicswin
+
+@.o.main: @.h.dialogbox @.h.geometry @.h.graphicswin @.c.main 
         cc $(ccflags) -o @.o.main @.c.main 
-
-
 
 # Dynamic dependencies:
 o.editor:	c.editor
@@ -47,12 +54,39 @@ o.gui:	RISC_OSLib:h.wimpt
 o.gui:	RISC_OSLib:h.win
 o.gui:	RISC_OSLib:h.template
 
+o.geometry:	c.geometry
+o.geometry:	h.geometry
+o.geometry:	RISC_OSLib:h.wimp
+o.geometry:	RISC_OSLib:h.os
+o.geometry:	C:h.kernel
+o.geometry:	RISC_OSLib:h.sprite
+o.graphicswin:	c.graphicswin
+o.graphicswin:	RISC_OSLib:h.alarm
+o.graphicswin:	RISC_OSLib:h.bbc
+o.graphicswin:	RISC_OSLib:h.os
+o.graphicswin:	C:h.kernel
+o.graphicswin:	RISC_OSLib:h.wimp
+o.graphicswin:	RISC_OSLib:h.sprite
+o.graphicswin:	RISC_OSLib:h.wimpt
+o.graphicswin:	RISC_OSLib:h.resspr
+o.graphicswin:	RISC_OSLib:h.baricon
+o.graphicswin:	RISC_OSLib:h.res
+o.graphicswin:	RISC_OSLib:h.event
+o.graphicswin:	RISC_OSLib:h.menu
+o.graphicswin:	RISC_OSLib:h.menu
+o.graphicswin:	RISC_OSLib:h.dbox
+o.graphicswin:	RISC_OSLib:h.win
+o.graphicswin:	RISC_OSLib:h.template
+o.graphicswin:	RISC_OSLib:h.colourtran
+o.graphicswin:	RISC_OSLib:h.font
+o.graphicswin:	RISC_OSLib:h.drawmod
+o.graphicswin:	h.graphicswin
+o.graphicswin:	h.geometry
+o.graphicswin:	RISC_OSLib:h.wimp
 o.main:	c.main
-o.main:	RISC_OSLib:h.alarm
-o.main:	RISC_OSLib:h.bbc
+o.main:	RISC_OSLib:h.wimp
 o.main:	RISC_OSLib:h.os
 o.main:	C:h.kernel
-o.main:	RISC_OSLib:h.wimp
 o.main:	RISC_OSLib:h.sprite
 o.main:	RISC_OSLib:h.wimpt
 o.main:	RISC_OSLib:h.resspr
@@ -61,10 +95,26 @@ o.main:	RISC_OSLib:h.res
 o.main:	RISC_OSLib:h.event
 o.main:	RISC_OSLib:h.menu
 o.main:	RISC_OSLib:h.menu
-o.main:	RISC_OSLib:h.dbox
-o.main:	RISC_OSLib:h.werr
 o.main:	RISC_OSLib:h.win
 o.main:	RISC_OSLib:h.template
-o.main:	RISC_OSLib:h.font
-o.main:	RISC_OSLib:h.drawmod
-o.main:	RISC_OSLib:h.colourtran
+o.main:	h.graphicswin
+o.main:	h.geometry
+o.main:	RISC_OSLib:h.wimp
+o.main:	h.dialogbox
+o.main:	RISC_OSLib:h.dbox
+o.main:	RISC_OSLib:h.wimp
+o.main:	h.graphicswin
+o.dialogbox:	c.dialogbox
+o.dialogbox:	RISC_OSLib:h.wimp
+o.dialogbox:	RISC_OSLib:h.os
+o.dialogbox:	C:h.kernel
+o.dialogbox:	RISC_OSLib:h.sprite
+o.dialogbox:	RISC_OSLib:h.colourtran
+o.dialogbox:	RISC_OSLib:h.font
+o.dialogbox:	RISC_OSLib:h.drawmod
+o.dialogbox:	h.dialogbox
+o.dialogbox:	RISC_OSLib:h.dbox
+o.dialogbox:	RISC_OSLib:h.wimp
+o.dialogbox:	h.graphicswin
+o.dialogbox:	h.geometry
+o.dialogbox:	RISC_OSLib:h.wimp

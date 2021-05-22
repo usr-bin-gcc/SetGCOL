@@ -1,0 +1,415 @@
+/*******************************************************************************
+
+File        : c.graphicswin
+
+Date        : Saturday 22nd May 2021
+
+Author      : Gavin Cawley
+
+Description : Graphics window for an application used to gain understanding of 
+              colourtran_setGCOL.
+  
+History     : 22/05/2021 - v1.0  - extracted from c.main
+
+*******************************************************************************/
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <math.h>
+                 
+#include "alarm.h"
+#include "bbc.h"
+#include "wimp.h"
+#include "wimpt.h"
+#include "resspr.h"
+#include "baricon.h"
+#include "res.h"
+#include "event.h"
+#include "menu.h"
+#include "dbox.h"
+#include "win.h"
+#include "template.h"
+#include "colourtran.h"
+
+#include "graphicswin.h"
+
+
+/*******************************************************************************
+*                                                                              *
+*                               Sevice Functions                               *
+*                                                                              *
+*******************************************************************************/
+                                           
+
+/*******************************************************************************
+
+Function    : gui_setColour
+
+Parameters  : int colourNumber
+
+Returns     : os_error*
+
+Description : Change the current graphics colour to the specified colour 
+              number.  
+
+Notes       : It seemed inefficient to set the colour using colourtran_setGCOL
+              repeatedly in e.g. gui_redraw, as in principle this might have
+              to select the nearest colour using least-squares.  Instead I
+              wanted to cache the colour numbers and set them directly more
+              directly.  This doesn't work with bbc_gcol in 16M colour modes,
+              and I have yet to fully understand the reason why.  Similarly 
+              wimp_setColour seems limited to standard WIMP_colours.  I couldn't
+              find a function that sets the colour, so I made a veneer for the
+              appropriate SWI.  It seems odd that there isn't an existing
+              function for this, so I assume I am missing something!
+ 
+*******************************************************************************/
+
+#define OS_SetColour (0x61)
+
+static os_error* gui_setColour(int flags, int colourNumber)
+{
+   os_regset r;
+
+   r.r[0] = flags;
+   r.r[1] = colourNumber;
+
+   return os_swix(OS_SetColour, &r);
+}
+
+/*******************************************************************************
+
+Function    : gui_redraw
+
+Parameters  : GraphicsWindow * - pointer to structure defining graphics window
+
+Returns     : void
+
+Description : Routine to redraw the graphics window, using the sequence of
+              rectangular redraw regions identified by the WIMP.  
+ 
+*******************************************************************************/
+
+static void gui_redraw(GraphicsWindow *gw)
+{            
+   BOOL more;
+                    
+   Rectangle redraw;
+  
+   wimp_redrawstr r;
+
+   r.w = gw->handle;
+
+   wimpt_noerr(wimp_redraw_wind(&r, &more));   
+            
+   while(more)
+   {           
+      // redraw background in the selected colour
+
+      gui_setColour(0x10, gw->COLOUR_BACKGROUND);
+
+      bbc_clg();
+
+      // screen co-ordinates of the work area origin
+                                                          
+      int x = r.box.x0 - r.scx;
+      int y = r.box.y1 - r.scy;          
+
+      // work-area coordinates of the update rectangle
+
+      redraw.x0 = r.g.x0 - r.box.x0 + r.scx;
+      redraw.y0 = r.g.y0 - r.box.y1 + r.scy;
+      redraw.x1 = r.g.x1 - r.box.x0 + r.scx;
+      redraw.y1 = r.g.y1 - r.box.y1 + r.scy;
+
+      // redraw rectangles
+      
+      gui_setColour(0x00, gw->COLOUR_RED);
+      bbc_rectanglefill(x + 0   + 95, y - 190 - 95, 190, 190);
+
+      gui_setColour(0x00, gw->COLOUR_GREEN);
+      bbc_rectanglefill(x + 380 + 95, y - 190 - 95, 190, 190);
+
+      gui_setColour(0x00, gw->COLOUR_BLUE);
+      bbc_rectanglefill(x + 0   + 95, y - 570 - 95, 190, 190);
+
+      gui_setColour(0x00, gw->COLOUR_WHITE);
+      bbc_rectanglefill(x + 380 + 95, y - 570 - 95, 190, 190);
+
+      // work out which circles to redraw
+
+      gui_setColour(gw->action, gw->COLOUR_FOREGROUND);
+
+      for (int i = 0; i < gw->nc; i++)
+      {  
+         if (intersects(&gw->circle[i], &redraw))
+         {
+            bbc_circle((int)gw->circle[i].x + x, 
+                       (int)gw->circle[i].y + y, 
+                       (int)gw->circle[i].r);
+         }
+      }
+                                         
+      // see if there is another rectange to redraw
+
+      wimp_get_rectangle(&r, &more);
+   }        
+}
+
+/*******************************************************************************
+
+Function    : gui_force_redraw
+
+Parameters  : GraphicsWindow * - pointer to struct defining the graphics window
+
+Returns     : void
+
+Description : Request a redraw of the entire visible work area.  Typically used
+              after the animation is updated to display the new frame.   
+ 
+*******************************************************************************/
+
+static void gui_force_redraw(GraphicsWindow *gw)
+{
+   wimp_redrawstr r;
+
+   r.w      = gw->handle;
+   r.box.x0 = 0;
+   r.box.y0 = -760;
+   r.box.x1 = +760;
+   r.box.y1 = 0;
+
+   wimp_force_redraw(&r);
+}
+
+/*******************************************************************************
+
+Function    : gui_update
+
+Parameters  : int   - the current time
+              void* - pointer to struct defining the graphics window              
+
+Returns     : void 
+
+Description : Update the position of the circles for the next frame of the
+              animation.
+
+Note        : The pointer to the struct defining the graphics window is the
+              second argument in this case, because this function is registered
+              as the handler for alarm events.  See also gui_open and gui_close.  
+ 
+*******************************************************************************/
+
+static void gui_update(int now, void* handle)
+{                                     
+   GraphicsWindow *gw = (GraphicsWindow*)handle;
+
+   double delta = 0.01*alarm_timedifference(gw->then, now);
+
+   // update each circle in turn
+
+   for (int i = 0; i < gw->nc; i++)
+   {                          
+      gw->circle[i].x = gw->circle[i].x + delta*gw->circle[i].dx;
+      gw->circle[i].y = gw->circle[i].y + delta*gw->circle[i].dy;
+
+      if (gw->circle[i].x - gw->circle[i].r < 0.0)
+      {                       
+         if (gw->circle[i].dx < 0)
+         {
+            gw->circle[i].dx = -(gw->circle[i].dx);
+         }
+      }
+      
+      if (gw->circle[i].x + gw->circle[i].r > 760.0)
+      {                       
+         if (gw->circle[i].dx > 0)
+         {
+            gw->circle[i].dx = -(gw->circle[i].dx);
+         }
+      }
+
+      if (gw->circle[i].y - gw->circle[i].r < -760.0)
+      {                       
+         if (gw->circle[i].dy < 0)
+         {
+            gw->circle[i].dy = -(gw->circle[i].dy);
+         }
+      }
+
+      if (gw->circle[i].y + gw->circle[i].r > 0)
+      {                       
+         if (gw->circle[i].dy > 0)
+         {
+            gw->circle[i].dy = -(gw->circle[i].dy);
+         }
+
+      } 
+   }
+                    
+   // force redraw of window
+
+   gui_force_redraw(gw);
+                                              
+   // reset alarm
+
+   alarm_set(now + 4, gui_update, (void*)gw);
+
+   gw->then = now;
+}
+
+/*******************************************************************************
+
+Function    : gui_eventHandler
+
+Parameters  : wimp_eventstr* - pointer to struct describing the event
+              void*          - pointer to struct defining the graphics window
+
+Returns     : void
+
+Description : Main event handler for the graphics window.  Again the pointer to
+              the struct describing the graphics window is passed as the
+              second argument because this function is registered with the WIMP
+              as an event handler, and must fit the required API.  
+ 
+*******************************************************************************/
+
+static void gui_eventHandler(wimp_eventstr *e, void *handle)
+{                                
+   GraphicsWindow *gw = (GraphicsWindow*)handle;
+
+   switch(e->e)
+   {                             
+      case wimp_EREDRAW:
+      {
+         gui_redraw(gw);
+      
+         break;
+      }
+      case wimp_EOPEN:   // maximise or minimise window 
+      {
+         gui_open(gw, &(e->data.o));
+      
+         break;
+      }
+      case wimp_ECLOSE:   // close window
+      {
+         gui_close(gw);
+       
+         break;
+      }
+   }
+}
+ 
+
+/*******************************************************************************
+*                                                                              *
+*         Interface Functions - documentation comments in header file          *
+*                                                                              *
+*******************************************************************************/
+
+
+void gui_setForeground(GraphicsWindow *gw, wimp_paletteword colour)
+{
+   colourtran_return_colournumber(colour, &(gw->COLOUR_FOREGROUND));
+}
+                                           
+void gui_setBackground(GraphicsWindow *gw, wimp_paletteword colour)
+{
+   colourtran_return_colournumber(colour, &(gw->COLOUR_BACKGROUND));
+}
+                                           
+void gui_setAction(GraphicsWindow *gw, int action)
+{
+   gw->action = action & 0x7;
+}
+                                           
+void gui_cacheColours(GraphicsWindow *gw)
+{
+   wimp_paletteword colour;
+
+   colour.word = (int)0x0000FF00;
+   colourtran_return_colournumber(colour, &(gw->COLOUR_RED));
+
+   colour.word = (int)0x00FF0000;
+   colourtran_return_colournumber(colour, &(gw->COLOUR_GREEN));
+
+   colour.word = (int)0xFF000000;
+   colourtran_return_colournumber(colour, &(gw->COLOUR_BLUE));
+
+   colour.word = (int)0xFFFFFF00;
+   colourtran_return_colournumber(colour, &(gw->COLOUR_WHITE));
+}
+
+void gui_open(GraphicsWindow *gw, wimp_openstr *wos)
+{  
+   wimpt_noerr(wimp_open_wind(wos));
+
+   // start animation running
+
+   alarm_init();
+
+   gw->then = alarm_timenow();
+
+   alarm_set(gw->then + 4, gui_update, (void*)gw);
+}
+
+void gui_close(GraphicsWindow *gw)
+{  
+   wimpt_noerr(wimp_close_wind(gw->handle));
+
+   alarm_removeall(gw);
+}
+                     
+GraphicsWindow *gui_create(int nc)
+{                        
+   wimp_wind *window = template_syshandle("Window");
+
+   if (window == 0)
+   {
+      exit(EXIT_FAILURE);
+   }
+
+   GraphicsWindow *gw = (GraphicsWindow*)malloc(sizeof(GraphicsWindow));
+
+   if (wimpt_complain(wimp_create_wind(window, &(gw->handle))) != 0)
+   {
+      exit(EXIT_FAILURE);
+   }
+
+   // initialise circles
+
+   gw->nc     = nc;
+   gw->circle = (Circle*)malloc(nc*sizeof(Circle));
+
+   for (int i = 0; i < nc; i++)
+   {             
+      double velocity   = (double)(256 - rand()%768);
+      double direction  = 2*3.14159*rand()/(double)RAND_MAX;
+
+      gw->circle[i].x  = (double)+380;
+      gw->circle[i].y  = (double)-380;
+      gw->circle[i].r  = (double)(32  + rand()%64);                                  
+      gw->circle[i].dx = velocity*cos(direction);
+      gw->circle[i].dy = velocity*sin(direction);
+   }
+
+   // initialise colour numbers 
+
+   gui_cacheColours(gw);
+   
+   wimp_paletteword colour;
+   
+   colour.word = (int)0xFFFFFF00;
+   gui_setForeground(gw, colour);
+
+   colour.word = (int)0x00000000;
+   gui_setBackground(gw, colour);
+
+   win_register_event_handler(gw->handle, gui_eventHandler, (void*)gw);
+
+   return gw;
+}
+
+/******************************************************************************/

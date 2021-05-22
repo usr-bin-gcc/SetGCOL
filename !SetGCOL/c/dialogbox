@@ -1,0 +1,385 @@
+/*******************************************************************************
+
+File        : c.dialogbox
+
+Date        : Saturday 22nd May 2021
+
+Author      : Gavin Cawley
+
+Description : Dialog box for an application used to gain understanding of 
+              colourtran_setGCOL.
+
+History     : 22/05/2021 - v1.0  - extracted from main.c 
+
+*******************************************************************************/
+
+#include <stdlib.h>
+#include <stdio.h>
+                 
+#include "wimp.h"
+#include "colourtran.h"
+
+#include "dialogbox.h"
+
+
+/*******************************************************************************
+*                                                                              *
+*                               Sevice Functions                               *
+*                                                                              *
+*******************************************************************************/                                          
+
+
+/*******************************************************************************
+
+Function    : setWordField
+
+Parameters  : DialogBox* - pointer to a struct defining the dialog box
+              int        - field
+              int        - value
+
+Returns     : void
+
+Description : Set the content of a 32-bit numeric field of the dialog box.  
+ 
+*******************************************************************************/
+
+static void setWordField(DialogBox *db, int field, unsigned int word)
+{
+   char buffer[64];
+
+   snprintf(buffer, 63, "0x%08X", word);
+   
+   dbox_setfield(db->handle, field, buffer);
+}
+
+/*******************************************************************************
+
+Function    : setByteField
+
+Parameters  : DialogBox* - pointer to a struct defining the dialog box
+              int        - field
+              int        - valud
+
+Returns     : void
+
+Description : Set the content of an 8-bit field of the dialog box.  
+ 
+*******************************************************************************/
+
+static void setByteField(DialogBox *db, int field, unsigned char gcol)
+{                                   
+   char buffer[64];
+
+   snprintf(buffer, 63, "0x%02X", gcol);
+   
+   dbox_setfield(db->handle, field, buffer);
+}
+
+/*******************************************************************************
+
+Function    : raw_event_handler
+
+Parameters  : dbox         - handle of the dialog box
+              void *even   - pointer to even structure
+              void *handle - pointer to dialog box structure
+
+Returns     : BOOL
+
+Description : Raw even handler for the dialog box to take appropriate actions
+              whenever a field of the dialog box is modified.  Returns TRUE if
+              the handler fully handles the event and FALSE if the even may be
+              passed on to a downstream event handler.  
+ 
+*******************************************************************************/
+
+static BOOL raw_event_handler(dbox dialog, void *event, void *handle)
+{                                                    
+   char buffer[64];         
+
+   DialogBox *db = (DialogBox*)handle;
+        
+   wimp_eventstr *e = event; 
+
+   switch(e->e)
+   {
+      case wimp_EBUT:   // mouse button change
+      {                                      
+         wimp_mousestr *ms = &e->data.but.m;
+                        
+         // change validation string
+           
+         switch (ms->i)
+         {
+            case FLAG_FOREGROUND:
+            {
+               db->flags = db->flags & 0xFFFFFF7F;
+
+               setWordField(db, FLAG_WORD, db->flags);
+
+               break;
+            }
+            case FLAG_BACKGROUND:
+            {                              
+               db->flags = db->flags | 0x00000080;
+
+               setWordField(db, FLAG_WORD, db->flags);
+
+               break;
+            }
+            case FLAG_ECF_OFF:
+            {
+               db->flags = db->flags & 0xFFFFFEFF;
+
+               setWordField(db, FLAG_WORD, db->flags);
+
+               break;
+            }
+            case FLAG_ECF_ON:
+            {                              
+               db->flags = db->flags | 0x00000100;
+
+               setWordField(db, FLAG_WORD, db->flags);
+
+               break;
+            }
+            case GCOL_ACTION_SOURCE:
+            {                              
+               db->gcol_action = (db->gcol_action & 0xFFFFFFF8) | 0x0;
+
+               setWordField(db, GCOL_ACTION_WORD, db->gcol_action);
+
+               break;
+            }
+            case GCOL_ACTION_OR:
+            {                              
+               db->gcol_action = (db->gcol_action & 0xFFFFFFF8) | 0x1;
+
+               setWordField(db, GCOL_ACTION_WORD, db->gcol_action);
+
+               break;
+            }
+            case GCOL_ACTION_AND:
+            {                              
+               db->gcol_action = (db->gcol_action & 0xFFFFFFF8) | 0x2;
+
+               setWordField(db, GCOL_ACTION_WORD, db->gcol_action);
+
+               break;
+            }
+            case GCOL_ACTION_XOR:
+            {                              
+               db->gcol_action = (db->gcol_action & 0xFFFFFFF8) | 0x3;
+
+               setWordField(db, GCOL_ACTION_WORD, db->gcol_action);
+
+               break;
+            }
+            case GCOL_ACTION_NOT:
+            {                              
+               db->gcol_action = (db->gcol_action & 0xFFFFFFF8) | 0x4;
+
+               setWordField(db, GCOL_ACTION_WORD, db->gcol_action);
+
+               break;
+            }
+            case GCOL_ACTION_DEST:
+            {                              
+               db->gcol_action = (db->gcol_action & 0xFFFFFFF8) | 0x5;
+
+               setWordField(db, GCOL_ACTION_WORD, db->gcol_action);
+
+               break;
+            }
+            case GCOL_ACTION_AND_NOT:
+            {                              
+               db->gcol_action = (db->gcol_action & 0xFFFFFFF8) | 0x6;
+
+               setWordField(db, GCOL_ACTION_WORD, db->gcol_action);
+
+               break;
+            }
+            case GCOL_ACTION_OR_NOT:
+            {                              
+               db->gcol_action = (db->gcol_action & 0xFFFFFFF8) | 0x7;
+
+               setWordField(db, GCOL_ACTION_WORD, db->gcol_action);
+
+               break;
+            }
+         }    
+
+         break;
+      }         
+      case wimp_EKEY:
+      {
+         wimp_caretstr *cs = &e->data.c;
+
+         switch (cs->i)
+         {
+            case PALETTE_ENTRY_GCOL:
+            {  
+               dbox_getfield(db->handle, PALETTE_ENTRY_GCOL, buffer, 64);
+               db->entry.bytes.gcol = (char)strtoul(buffer, NULL, 0);
+
+               setWordField(db, PALETTE_ENTRY_WORD, db->entry.word);
+               setByteField(db, PALETTE_ENTRY_GCOL, db->entry.bytes.gcol);
+
+               break;
+            }
+            case PALETTE_ENTRY_RED:
+            {
+               dbox_getfield(db->handle, PALETTE_ENTRY_RED, buffer, 64);
+               db->entry.bytes.red = (char)strtoul(buffer, NULL, 0);
+
+               setWordField(db, PALETTE_ENTRY_WORD, db->entry.word);
+               setByteField(db, PALETTE_ENTRY_RED,  db->entry.bytes.red);
+
+               break;
+            }
+            case PALETTE_ENTRY_GREEN:
+            {
+               dbox_getfield(db->handle, PALETTE_ENTRY_GREEN, buffer, 64);
+               db->entry.bytes.green = (char)strtoul(buffer, NULL, 0);
+
+               setWordField(db, PALETTE_ENTRY_WORD,  db->entry.word);
+               setByteField(db, PALETTE_ENTRY_GREEN, db->entry.bytes.green);
+
+               break;
+            } 
+            case PALETTE_ENTRY_BLUE:
+            {
+               dbox_getfield(db->handle, PALETTE_ENTRY_BLUE, buffer, 64);
+               db->entry.bytes.blue = (char)strtoul(buffer, NULL, 0);
+
+               setWordField(db, PALETTE_ENTRY_WORD, db->entry.word);
+               setByteField(db, PALETTE_ENTRY_BLUE, db->entry.bytes.blue);
+
+               break;
+            }
+            case PALETTE_ENTRY_WORD:
+            {
+               dbox_getfield(db->handle, PALETTE_ENTRY_WORD, buffer, 64);
+               db->entry.word = (int)strtoul(buffer, NULL, 0);
+
+               setWordField(db, PALETTE_ENTRY_WORD,  db->entry.word);
+               setByteField(db, PALETTE_ENTRY_GCOL,  db->entry.bytes.gcol);
+               setByteField(db, PALETTE_ENTRY_RED,   db->entry.bytes.red);
+               setByteField(db, PALETTE_ENTRY_GREEN, db->entry.bytes.green);
+               setByteField(db, PALETTE_ENTRY_BLUE,  db->entry.bytes.blue);
+
+               break;
+            }
+            case FLAG_WORD: 
+            {     
+               dbox_getfield(db->handle, FLAG_WORD, buffer, 64);
+
+               db->flags = (int)strtoul(buffer, NULL, 0);
+                                           
+               if (db->flags & 0x00000080)
+               {
+                  dbox_setnumeric(db->handle, FLAG_FOREGROUND, 0); 
+                  dbox_setnumeric(db->handle, FLAG_BACKGROUND, 1); 
+               }
+               else
+               {
+                  dbox_setnumeric(db->handle, FLAG_FOREGROUND, 1); 
+                  dbox_setnumeric(db->handle, FLAG_BACKGROUND, 0); 
+               }
+
+               if (db->flags & 0x00000100)
+               {
+                  dbox_setnumeric(db->handle, FLAG_ECF_OFF, 0); 
+                  dbox_setnumeric(db->handle, FLAG_ECF_ON,  1); 
+               }
+               else
+               {
+                  dbox_setnumeric(db->handle, FLAG_ECF_OFF, 1); 
+                  dbox_setnumeric(db->handle, FLAG_ECF_ON,  0); 
+               }
+
+               setWordField(db, FLAG_WORD, db->flags);
+
+               break;
+            }
+            case GCOL_ACTION_WORD:
+            {
+               dbox_getfield(db->handle, GCOL_ACTION_WORD, buffer, 64);
+
+               db->gcol_action = (int)strtoul(buffer, NULL, 0);
+                                                                
+               for (int i = 0; i < 8; i++)
+               {
+                  if (i == (db->gcol_action & 0x7))
+                  {
+                     dbox_setnumeric(db->handle, i + GCOL_ACTION_SOURCE, 1); 
+                  }
+                  else
+                  {
+                     dbox_setnumeric(db->handle, i + GCOL_ACTION_SOURCE, 0); 
+                  }
+               }
+
+               setWordField(db, GCOL_ACTION_WORD,  db->gcol_action);
+
+               break;
+            }          
+         }
+
+         break;
+      }
+   }   
+
+   colourtran_setGCOL(db->entry, db->flags, db->gcol_action, &(db->gcol));
+               
+   setWordField(db, GCOL_WORD,  db->gcol);
+
+   // update the graphics window
+
+   if (db->flags & 0x80)
+   {
+      gui_setBackground(db->gw, db->entry);
+   }                                       
+   else
+   {
+      gui_setForeground(db->gw, db->entry);
+   }
+
+   gui_setAction(db->gw, db->gcol_action);
+
+   return FALSE;
+}
+
+
+/*******************************************************************************
+*                                                                              *
+*         Interface Functions - documentation comments in header file          *
+*                                                                              *
+*******************************************************************************/
+
+
+DialogBox *dialogBox_create(GraphicsWindow *gw)
+{            
+   char buffer[64];
+                                  
+   DialogBox *db = (DialogBox*)malloc(sizeof(DialogBox));
+   
+   db->handle = dbox_new("Dialog");
+   db->gw     = gw;
+              
+   dbox_getfield(db->handle, PALETTE_ENTRY_WORD, buffer, 64);
+   db->entry.word = (int)strtoul(buffer, NULL, 0);
+
+   dbox_getfield(db->handle, FLAG_WORD, buffer, 64);
+   db->flags = (int)strtoul(buffer, NULL, 0);
+
+   dbox_getfield(db->handle, GCOL_ACTION_WORD, buffer, 64);
+   db->gcol_action = (int)strtoul(buffer, NULL, 0);
+
+   gui_setAction(db->gw, db->gcol_action);
+
+   dbox_raw_eventhandler(db->handle, raw_event_handler, db);
+
+   return db;
+}
+
+/******************************************************************************/

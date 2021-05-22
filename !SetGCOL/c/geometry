@@ -1,0 +1,112 @@
+/*******************************************************************************
+
+File        : c.geometry
+
+Date        : Saturday 22nd May 2021
+
+Author      : Gavin Cawley
+
+Description : A few basic geometry routines for RiscOS Desktop programming etc. 
+
+History     : 22/05/2021 - v1.00 - refactored from c.main of !SetGCOL
+
+*******************************************************************************/
+
+#include "geometry.h"
+
+/*******************************************************************************
+
+Function    : between
+
+Parameters  : int x   - value to be tested
+              int min - lowest value of the range
+              int max - larges value of the range
+
+Returns     : BOOL - TRUE if x in [min, max] and FALSE otherwise
+
+Description : Returns TRUE if x lies within the range from min to max 
+              (inclusive), i.e. if x is greater than or equal to min and less 
+              than or equal to ma. and otherwise returns FALSE.  
+ 
+*******************************************************************************/
+
+BOOL between(int x, int min, int max)
+{
+   return ((x >= min) && (x <= max)) ? TRUE : FALSE;
+}                     
+
+/*******************************************************************************
+
+Function    : sqrdist
+
+Parameters  : int x0, y0 - co-ordinates of first Cartesian point
+              int x1, y1 - co-ordinates of second Cartesian point
+
+Returns     : int - squared distance between points
+
+Description : Returns the squated distance between a pair of Cartesian points.
+              This is more efficient than the Euclidean distance as sqrt()
+              is monotonic and so the ordering of the squared distatance and
+              Euclidean distance is the same.  
+ 
+*******************************************************************************/
+
+int sqrdist(int x0, int y0, int x1, int y1)
+{
+   return (x1 - x0)*(x1 - x0) + (y1 - y0)*(y1 - y0);
+}
+
+/*******************************************************************************
+
+Function    : intersects
+
+Parameters  : Circle    *c - pointer to a Circle struct
+              Rectangle *r - pointer to a Rectangle struct
+
+Returns     : BOOL - TRUE if circle and Rectangle intersect and FALSE otherwise.
+
+Description : Returns TRUE if an intersection or overlap exists between the
+              specified Circle and Rectangle. 
+
+*******************************************************************************/                                                    
+                     
+BOOL intersects(Circle *c, Rectangle *r)
+{              
+   int cx = (int)c->x, cy = (int)c->y, cr = (int)c->r;
+                      
+   if (between(cx, r->x0-cr, r->x1+cr) && between(cy, r->y0, r->y1))
+   {                                 
+      return TRUE;
+   }
+
+   if (between(cx, r->x0, r->x1) && between(cy, r->y0-cr, r->y1+cr))
+   {                                 
+      return TRUE;
+   }
+               
+   int rsqr = cr*cr;
+                                       
+   if (sqrdist(cx, cy, r->x0, r->y0) <= rsqr)
+   {
+      return TRUE;
+   }
+    
+   if (sqrdist(cx, cy, r->x0, r->y1) <= rsqr)
+   {
+      return TRUE;
+   }
+
+   if (sqrdist(cx, cy, r->x1, r->y0) <= rsqr)
+   {
+      return TRUE;
+   }
+
+   if (sqrdist(cx, cy, r->x1, r->y1) <= rsqr)
+   {
+      return TRUE;
+   }
+
+   return FALSE;
+}
+
+/******************************************************************************/

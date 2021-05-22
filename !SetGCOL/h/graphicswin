@@ -1,0 +1,170 @@
+/*******************************************************************************
+
+File        : h.graphicswin
+
+Date        : Saturday 22nd May 2021
+
+Author      : Gavin Cawley
+
+Description : Graphics window for an application used to gain understanding of 
+              colourtran_setGCOL.
+  
+History     : 22/05/2021 - v1.0  - extracted from c.main
+
+*******************************************************************************/    
+
+#ifndef GRAPHICSWIN_HEADER
+#define GRAPHICSWIN_HEADER
+                                                                                 
+#include "geometry.h"
+
+typedef struct GraphicsWindowStruct
+{  
+   // circles
+
+   int nc;
+
+   Circle *circle;
+
+   // time of last animation frame
+
+   int then;
+
+   // cache for colour numbers etc.
+
+   int action;   // GCOL action 
+
+   int COLOUR_RED;
+   int COLOUR_GREEN;
+   int COLOUR_BLUE;
+   int COLOUR_WHITE;
+   int COLOUR_FOREGROUND;
+   int COLOUR_BACKGROUND;
+
+   // WIMP information
+
+   wimp_w handle;   
+}
+GraphicsWindow;
+
+/*******************************************************************************
+
+Function    : gui_setForeground
+
+Parameters  : GraphicsWindow*  - pointer to structure defining graphics window
+              wimp_paletteword - new forground colour
+
+Returns     : void
+
+Description : Set the foreground colour, specified by a palette entry, stored
+              as a colour number for efficient redrawing. 
+
+Notes       : Colour numbers depend on the screen mode and palette, and so must 
+              be reset whenever there is a mode or palatte change, see  
+              unknownEventProcessor().
+ 
+*******************************************************************************/
+                                           
+void gui_setForeground(GraphicsWindow *gw, wimp_paletteword colour);
+
+/*******************************************************************************
+
+Function    : gui_setBackground
+
+Parameters  : GraphicsWindow*  - pointer to structure defining graphics window
+              wimp_paletteword - new background colour
+
+Returns     : void
+
+Description : Set the background colour, specified by a palette entry, stored
+              as a colour number for efficient redrawing. 
+
+Notes       : Colour numbers depend on the screen mode and palette, and so must 
+              be reset whenever there is a mode or palatte change, see  
+              unknownEventProcessor().
+ 
+*******************************************************************************/
+                                           
+void gui_setBackground(GraphicsWindow *gw, wimp_paletteword colour);
+
+/*******************************************************************************
+
+Function    : gui_setAction
+
+Parameters  : GraphicsWindow* - pointer to structure defining graphics window
+              int             - new GCOL action
+
+Returns     : void
+
+Description : Set the GCOL action for the graphics window. 
+ 
+*******************************************************************************/
+                                           
+void gui_setAction(GraphicsWindow *gw, int action);
+
+/*******************************************************************************
+
+Function    : gui_open
+
+Parameters  : GraphicsWindow* - pointer to struct defining the graphics window
+
+Returns     : void 
+
+Description : Open the graphics window, so that it is visible on-screen, and
+              start the animation.  
+ 
+*******************************************************************************/
+
+void gui_open(GraphicsWindow *gw, wimp_openstr *wos);
+
+/*******************************************************************************
+
+Function    : gui_close
+
+Parameters  : GraphicsWindow* - pointer to struct defining the graphics window.
+
+Returns     : void 
+
+Description : Hide the graphics window, so that it is no longer visible, and
+              also halt the animation for efficiency.  
+ 
+*******************************************************************************/
+
+void gui_close(GraphicsWindow *gw);
+
+/*******************************************************************************
+
+Function    : gui_create
+
+Parameters  : int - number of circles
+
+Returns     : GraphicsWindow* - pointer to strict defining the graphics window.
+
+Description : Allocate and initialise a struct describing the graphics window.
+              The neccessary handlers etc. are registered with the WIMP, but
+              the window is initially hidden.  
+ 
+*******************************************************************************/
+                     
+GraphicsWindow *gui_create(int nc);
+
+/*******************************************************************************
+
+Function    : gui_cacheColours
+
+Parameters  : GraphicsWindow* - pointer to struct defining the graphics window.
+
+Returns     : void
+
+Description : The graphics window uses colour numbers to improve the efficiency
+              of the redraw function, but these depend on the screen mode and
+              the palette.  This function can be used to re-cache the colour
+              numbers following a mode or palette change. 
+ 
+*******************************************************************************/
+
+void gui_cacheColours(GraphicsWindow *gw);
+
+/******************************************************************************/
+
+#endif   // GRAPHICSWIN_HEADER

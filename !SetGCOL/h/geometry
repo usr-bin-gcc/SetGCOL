@@ -1,0 +1,86 @@
+/*******************************************************************************
+
+File        : h.geometry
+
+Date        : Saturday 22nd May 2021
+
+Author      : Gavin Cawley
+
+Description : A few basic geometry routines for RiscOS Desktop programming etc. 
+
+History     : 22/05/2021 - v1.00 - refactored from c.main of !SetGCOL
+
+*******************************************************************************/
+
+#ifndef GEOMETRY_HEADER
+#define GEOMETRY_HEADER
+
+#include "wimp.h"   // for definition of BOOL, TRUE and FALSE
+
+typedef struct
+{      
+   double x, y, r, dx, dy;
+}
+Circle;    
+
+typedef struct
+{         
+   int x0, y0, x1, y1;                                                     
+}
+Rectangle;         
+
+/*******************************************************************************
+
+Function    : between
+
+Parameters  : int x   - value to be tested
+              int min - lowest value of the range
+              int max - larges value of the range
+
+Returns     : BOOL - TRUE if x in [min, max] and FALSE otherwise
+
+Description : Returns TRUE if x lies within the range from min to max 
+              (inclusive), i.e. if x is greater than or equal to min and less 
+              than or equal to ma. and otherwise returns FALSE.  
+ 
+*******************************************************************************/
+
+BOOL between(int x, int min, int max);                 
+
+/*******************************************************************************
+
+Function    : sqrdist
+
+Parameters  : int x0, y0 - co-ordinates of first Cartesian point
+              int x1, y1 - co-ordinates of second Cartesian point
+
+Returns     : int - squared distance between points
+
+Description : Returns the squated distance between a pair of Cartesian points.
+              This is more efficient than the Euclidean distance as sqrt()
+              is monotonic and so the ordering of the squared distatance and
+              Euclidean distance is the same.  
+ 
+*******************************************************************************/
+
+int sqrdist(int x0, int y0, int x1, int y1);
+
+/*******************************************************************************
+
+Function    : intersects
+
+Parameters  : Circle    *c - pointer to a Circle struct
+              Rectangle *r - pointer to a Rectangle struct
+
+Returns     : BOOL - TRUE if circle and Rectangle intersect and FALSE otherwise.
+
+Description : Returns TRUE if an intersection or overlap exists between the
+              specified Circle and Rectangle. 
+
+*******************************************************************************/                                                    
+                     
+BOOL intersects(Circle *c, Rectangle *r);
+
+/******************************************************************************/
+
+#endif   // GEOMETRY_HEADER

@@ -1,0 +1,83 @@
+/*******************************************************************************
+
+File        : h.dialogbox
+
+Date        : Saturday 22nd May 2021
+
+Author      : Gavin Cawley
+
+Description : Dialog box for an application used to gain understanding of 
+              colourtran_setGCOL.
+
+To do       : (i) Could have a fuller set of interface functions, e.g. open and
+                  close the dialog box and a function to dispose of the dialog
+                  box at the end of the program.
+
+History     : 22/05/2021 - v1.0  - extracted from main.c 
+
+*******************************************************************************/
+
+#ifndef DIALOGBOX_HEADER
+#define DIALOGBOX_HEADER
+                        
+#include "dbox.h"
+#include "wimp.h"
+
+#include "graphicswin.h"
+
+typedef struct DialogBoxStruct
+{
+   wimp_paletteword entry;
+
+   unsigned int flags;
+
+   unsigned int gcol_action;
+
+   int gcol;
+
+   GraphicsWindow *gw;
+
+   dbox handle;
+}
+DialogBox;
+
+// icon numbers for dialog box  
+
+#define PALETTE_ENTRY_GCOL  6
+#define PALETTE_ENTRY_RED   7
+#define PALETTE_ENTRY_GREEN 8
+#define PALETTE_ENTRY_BLUE  9
+#define PALETTE_ENTRY_WORD  10
+#define FLAG_FOREGROUND     11
+#define FLAG_BACKGROUND     12
+#define FLAG_ECF_ON         34
+#define FLAG_ECF_OFF        35
+#define FLAG_WORD           13
+#define GCOL_ACTION_SOURCE  14
+#define GCOL_ACTION_OR      15
+#define GCOL_ACTION_AND     16
+#define GCOL_ACTION_XOR     17
+#define GCOL_ACTION_NOT     18
+#define GCOL_ACTION_DEST    19
+#define GCOL_ACTION_AND_NOT 20
+#define GCOL_ACTION_OR_NOT  21
+#define GCOL_ACTION_WORD    22
+#define GCOL_WORD           23
+
+/*******************************************************************************
+
+Function    : dialogBox_create
+
+Parameters  : GraphicsWindow* - pointer to the graphics window struct
+
+Returns     : DialogBox* - pointer to new dialog box
+
+Description : Create a new dialog box.  
+ 
+*******************************************************************************/
+
+DialogBox *dialogBox_create(GraphicsWindow *gw);
+
+/******************************************************************************/
+
+#endif   // DIALOGBOX_HEADER
