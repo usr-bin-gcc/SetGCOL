@@ -1,3 +1,3 @@
 # SetGCOL
 
-Testing GIT...
+This program was written to help me understand the RiscOS ColourTrans module, which allows colours to be specified in desktop applications in a way that doesn't depend on the current screen mode and hardware capabilities.  The program allows you to experiment with the arguments to colourtran_setGCOL function in Risc_OSLib and view the GCOL value that is returned.  I found GCOL to be one of the more opaque topics in the PRMs, perhaps becuse it has a long an complicated history - I think I understand it a bit more clearly now (I think!).  I've also been experimenting with dialog boxes and how to go about writing modular desktop programs in C, which I'll need if I am going to write more substantial programs.  As always, any constructive feedback is greatly appreciated!
