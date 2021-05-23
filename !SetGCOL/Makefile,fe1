@@ -2,8 +2,8 @@
 
 
 # Toolflags:
-CCflags = -c -depend !Depend -I<LibSource$Dir> -IRISC_OSLib: -throwback
-C++flags = -c -depend !Depend -I<LibSource$Dir> -IRISC_OSLib: -throwback
+CCflags = -c -depend !Depend -IRISC_OSLib: -throwback
+C++flags = -c -depend !Depend -IRISC_OSLib: -throwback
 Linkflags = -aif -c++ -o $@
 ObjAsmflags = -throwback -NoCache -depend !Depend
 CMHGflags = 
@@ -11,7 +11,7 @@ LibFileflags = -c -o $@
 Squeezeflags = -o $@
 ModSqzflags = -o $@
 
-OBJS = @.o.dialogbox @.o.geometry @.o.graphicswin @.o.main <LibSource$Dir>.Lib RISC_OSLib:o.risc_oslib C:o.stubs
+OBJS = @.o.dialogbox @.o.geometry @.o.graphicswin @.o.main RISC_OSLib:o.risc_oslib C:o.stubs
 
 # Final targets:
 @.application: $(OBJS)
@@ -60,6 +60,20 @@ o.geometry:	RISC_OSLib:h.wimp
 o.geometry:	RISC_OSLib:h.os
 o.geometry:	C:h.kernel
 o.geometry:	RISC_OSLib:h.sprite
+o.dialogbox:	c.dialogbox
+o.dialogbox:	RISC_OSLib:h.wimp
+o.dialogbox:	RISC_OSLib:h.os
+o.dialogbox:	C:h.kernel
+o.dialogbox:	RISC_OSLib:h.sprite
+o.dialogbox:	RISC_OSLib:h.colourtran
+o.dialogbox:	RISC_OSLib:h.font
+o.dialogbox:	RISC_OSLib:h.drawmod
+o.dialogbox:	h.dialogbox
+o.dialogbox:	RISC_OSLib:h.dbox
+o.dialogbox:	RISC_OSLib:h.wimp
+o.dialogbox:	h.graphicswin
+o.dialogbox:	h.geometry
+o.dialogbox:	RISC_OSLib:h.wimp
 o.graphicswin:	c.graphicswin
 o.graphicswin:	RISC_OSLib:h.alarm
 o.graphicswin:	RISC_OSLib:h.bbc
@@ -104,17 +118,3 @@ o.main:	h.dialogbox
 o.main:	RISC_OSLib:h.dbox
 o.main:	RISC_OSLib:h.wimp
 o.main:	h.graphicswin
-o.dialogbox:	c.dialogbox
-o.dialogbox:	RISC_OSLib:h.wimp
-o.dialogbox:	RISC_OSLib:h.os
-o.dialogbox:	C:h.kernel
-o.dialogbox:	RISC_OSLib:h.sprite
-o.dialogbox:	RISC_OSLib:h.colourtran
-o.dialogbox:	RISC_OSLib:h.font
-o.dialogbox:	RISC_OSLib:h.drawmod
-o.dialogbox:	h.dialogbox
-o.dialogbox:	RISC_OSLib:h.dbox
-o.dialogbox:	RISC_OSLib:h.wimp
-o.dialogbox:	h.graphicswin
-o.dialogbox:	h.geometry
-o.dialogbox:	RISC_OSLib:h.wimp
