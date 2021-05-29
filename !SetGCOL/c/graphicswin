@@ -107,9 +107,10 @@ static void gui_redraw(GraphicsWindow *gw)
    {           
       // redraw background in the selected colour
 
-      gui_setColour(0x10, gw->COLOUR_BACKGROUND);
+      //gui_setColour(0x10, gw->COLOUR_BACKGROUND);
 
-      bbc_clg();
+      //bbc_clg();
+
 
       // screen co-ordinates of the work area origin
                                                           
@@ -123,19 +124,31 @@ static void gui_redraw(GraphicsWindow *gw)
       redraw.x1 = r.g.x1 - r.box.x0 + r.scx;
       redraw.y1 = r.g.y1 - r.box.y1 + r.scy;
 
+      // redraw background
+
+      gui_setColour(0x00, gw->COLOUR_BACKGROUND);
+
+      bbc_rectanglefill(x, y - 100 + 1, 700, 99);
+      bbc_rectanglefill(x, y - 400 + 1, 700, 99);
+      bbc_rectanglefill(x, y - 700 + 0, 700, 99);
+
+      bbc_rectanglefill(x + 0   + 1, y - 600, 99, 500);
+      bbc_rectanglefill(x + 300 + 1, y - 600, 99, 500);
+      bbc_rectanglefill(x + 600 + 1, y - 600, 99, 500);
+
       // redraw rectangles
       
       gui_setColour(0x00, gw->COLOUR_RED);
-      bbc_rectanglefill(x + 0   + 95, y - 190 - 95, 190, 190);
+      bbc_rectanglefill(x + 0   + 100, y - 200 - 100, 200, 200);
 
       gui_setColour(0x00, gw->COLOUR_GREEN);
-      bbc_rectanglefill(x + 380 + 95, y - 190 - 95, 190, 190);
+      bbc_rectanglefill(x + 300 + 100, y - 200 - 100, 200, 200);
 
       gui_setColour(0x00, gw->COLOUR_BLUE);
-      bbc_rectanglefill(x + 0   + 95, y - 570 - 95, 190, 190);
+      bbc_rectanglefill(x + 0   + 100, y - 500 - 100, 200, 200);
 
       gui_setColour(0x00, gw->COLOUR_WHITE);
-      bbc_rectanglefill(x + 380 + 95, y - 570 - 95, 190, 190);
+      bbc_rectanglefill(x + 300 + 100, y - 500 - 100, 200, 200);
 
       // work out which circles to redraw
 
@@ -176,8 +189,8 @@ static void gui_force_redraw(GraphicsWindow *gw)
 
    r.w      = gw->handle;
    r.box.x0 = 0;
-   r.box.y0 = -760;
-   r.box.x1 = +760;
+   r.box.y0 = -700;
+   r.box.x1 = +700;
    r.box.y1 = 0;
 
    wimp_force_redraw(&r);
@@ -222,7 +235,7 @@ static void gui_update(int now, void* handle)
          }
       }
       
-      if (gw->circle[i].x + gw->circle[i].r > 760.0)
+      if (gw->circle[i].x + gw->circle[i].r > 700.0)
       {                       
          if (gw->circle[i].dx > 0)
          {
@@ -230,7 +243,7 @@ static void gui_update(int now, void* handle)
          }
       }
 
-      if (gw->circle[i].y - gw->circle[i].r < -760.0)
+      if (gw->circle[i].y - gw->circle[i].r < -700.0)
       {                       
          if (gw->circle[i].dy < 0)
          {
