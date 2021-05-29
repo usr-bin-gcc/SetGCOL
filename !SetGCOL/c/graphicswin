@@ -2,14 +2,15 @@
 
 File        : c.graphicswin
 
-Date        : Saturday 22nd May 2021
+Date        : Saturday 29th May 2021
 
 Author      : Gavin Cawley
 
 Description : Graphics window for an application used to gain understanding of 
               colourtran_setGCOL.
   
-History     : 22/05/2021 - v1.0  - extracted from c.main
+History     : 22/05/2021 - v1.00 - extracted from c.main
+              29/05/2021 - v1.10 - reduced flicker for legacy hardware
 
 *******************************************************************************/
 
@@ -105,13 +106,6 @@ static void gui_redraw(GraphicsWindow *gw)
             
    while(more)
    {           
-      // redraw background in the selected colour
-
-      //gui_setColour(0x10, gw->COLOUR_BACKGROUND);
-
-      //bbc_clg();
-
-
       // screen co-ordinates of the work area origin
                                                           
       int x = r.box.x0 - r.scx;
@@ -132,9 +126,13 @@ static void gui_redraw(GraphicsWindow *gw)
       bbc_rectanglefill(x, y - 400 + 1, 700, 99);
       bbc_rectanglefill(x, y - 700 + 0, 700, 99);
 
-      bbc_rectanglefill(x + 0   + 1, y - 600, 99, 500);
-      bbc_rectanglefill(x + 300 + 1, y - 600, 99, 500);
-      bbc_rectanglefill(x + 600 + 1, y - 600, 99, 500);
+      bbc_rectanglefill(x + 0   + 1, y - 300, 99, 200);
+      bbc_rectanglefill(x + 300 + 1, y - 300, 99, 200);
+      bbc_rectanglefill(x + 600 + 1, y - 300, 99, 200);
+
+      bbc_rectanglefill(x + 0   + 1, y - 600, 99, 200);
+      bbc_rectanglefill(x + 300 + 1, y - 600, 99, 200);
+      bbc_rectanglefill(x + 600 + 1, y - 600, 99, 200);
 
       // redraw rectangles
       
