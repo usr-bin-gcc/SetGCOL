@@ -2,7 +2,7 @@
 
 File        : h.dialogbox
 
-Date        : Saturday 22nd May 2021
+Date        : Sunday 30th May 2021
 
 Author      : Gavin Cawley
 
@@ -13,7 +13,8 @@ To do       : (i) Could have a fuller set of interface functions, e.g. open and
                   close the dialog box and a function to dispose of the dialog
                   box at the end of the program.
 
-History     : 22/05/2021 - v1.0  - extracted from main.c 
+History     : 22/05/2021 v1.00 - extracted from main.c
+              30/05/2021 v1.10 - added colour number field. 
 
 *******************************************************************************/
 
@@ -33,7 +34,7 @@ typedef struct DialogBoxStruct
 
    unsigned int gcol_action;
 
-   int gcol;
+   int gcol, colourNumber;
 
    GraphicsWindow *gw;
 
@@ -63,6 +64,7 @@ DialogBox;
 #define GCOL_ACTION_OR_NOT  21
 #define GCOL_ACTION_WORD    22
 #define GCOL_WORD           23
+#define COLOUR_NUMBER_WORD  36
 
 /*******************************************************************************
 

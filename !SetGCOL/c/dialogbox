@@ -2,14 +2,15 @@
 
 File        : c.dialogbox
 
-Date        : Saturday 22nd May 2021
+Date        : Sunday 30th May 2021
 
 Author      : Gavin Cawley
 
 Description : Dialog box for an application used to gain understanding of 
               colourtran_setGCOL.
 
-History     : 22/05/2021 - v1.0  - extracted from main.c 
+History     : 22/05/2021 v1.00 - extracted from main.c
+              30/05/2021 v1.10 - added colout number field. 
 
 *******************************************************************************/
 
@@ -332,6 +333,10 @@ static BOOL raw_event_handler(dbox dialog, void *event, void *handle)
    colourtran_setGCOL(db->entry, db->flags, db->gcol_action, &(db->gcol));
                
    setWordField(db, GCOL_WORD,  db->gcol);
+
+   colourtran_return_colournumber(db->entry, &(db->colourNumber));
+
+   setWordField(db, COLOUR_NUMBER_WORD,  db->colourNumber);
 
    // update the graphics window
 
