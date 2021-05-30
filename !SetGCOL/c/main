@@ -13,15 +13,16 @@ Description : Application used to gain understanding of colourtran_setGCOL.
 
 To do       : (i) Re-implement dialogue as a standard window?
 
-History     : 16/05/2021 - v1.0  - basic working version
-              22/05/2021 - v1.10 - Now caches colour numbers for efficiency,
-                                   unknown even processor added to detect
-                                   mode and palette changes so they can be
-                                   re-cached.  Background colours partially 
-                                   implemented.  General refactoring and
-                                   improvements to comments.  Both windows
-                                   appear/dissapear together.  Anomation is
-                                   paused while not visible.
+History     : 16/05/2021 v1.00 - basic working version.
+              22/05/2021 v1.10 - Now caches colour numbers for efficiency,
+                                 unknown even processor added to detect
+                                 mode and palette changes so they can be
+                                 re-cached.  Background colours partially 
+                                 implemented.  General refactoring and
+                                 improvements to comments.  Both windows
+                                 appear/dissapear together.  Anomation is
+                                 paused while not visible.
+              30/05/2021 v1.11 - gui_cacheColours renamed gui_modeChange.
 
 *******************************************************************************/
 
@@ -215,7 +216,7 @@ BOOL unknownEventProcessor(wimp_eventstr *e, void *handle)
             }
             case wimp_PALETTECHANGE:
             {                    
-               gui_cacheColours(gw);
+               gui_modeChange(gw);
 
                return TRUE;
             }

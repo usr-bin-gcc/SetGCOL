@@ -2,14 +2,18 @@
 
 File        : h.graphicswin
 
-Date        : Saturday 22nd May 2021
+Date        : Sunday 30th May 2021
 
 Author      : Gavin Cawley
 
 Description : Graphics window for an application used to gain understanding of 
               colourtran_setGCOL.
   
-History     : 22/05/2021 - v1.0  - extracted from c.main
+History     : 22/05/2021 v1.00 - extracted from c.main
+              30/05/2021 v1.01 - added xScale and yScale to facilitate flicker
+                                 reduction for legacy hardware gui_cacheColours 
+                                 changed to gui_modeChange as now also resets 
+                                 xScale and yScale.
 
 *******************************************************************************/    
 
@@ -44,6 +48,8 @@ typedef struct GraphicsWindowStruct
    // WIMP information
 
    wimp_w handle;   
+
+   int xScale, yScale;
 }
 GraphicsWindow;
 
@@ -150,7 +156,7 @@ GraphicsWindow *gui_create(int nc);
 
 /*******************************************************************************
 
-Function    : gui_cacheColours
+Function    : gui_modeChange
 
 Parameters  : GraphicsWindow* - pointer to struct defining the graphics window.
 
@@ -159,11 +165,12 @@ Returns     : void
 Description : The graphics window uses colour numbers to improve the efficiency
               of the redraw function, but these depend on the screen mode and
               the palette.  This function can be used to re-cache the colour
-              numbers following a mode or palette change. 
+              numbers following a mode or palette change.  It also resets the
+              x- and y- scaling factors relating screen pixels to OS co-ords. 
  
 *******************************************************************************/
 
-void gui_cacheColours(GraphicsWindow *gw);
+void gui_modeChange(GraphicsWindow *gw);
 
 /******************************************************************************/
 

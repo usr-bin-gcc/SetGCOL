@@ -11,6 +11,9 @@ Description : Graphics window for an application used to gain understanding of
   
 History     : 22/05/2021 - v1.00 - extracted from c.main
               29/05/2021 - v1.10 - reduced flicker for legacy hardware
+              30/05/2021 - v1.11 - flicker (hopefully) further reduced
+                                   gui_cacheColours changed to gui_modeChange
+                                   as now also resets xScale and yScale.
 
 *******************************************************************************/
 
@@ -122,17 +125,17 @@ static void gui_redraw(GraphicsWindow *gw)
 
       gui_setColour(0x00, gw->COLOUR_BACKGROUND);
 
-      bbc_rectanglefill(x, y - 100 + 1, 700, 99);
-      bbc_rectanglefill(x, y - 400 + 1, 700, 99);
-      bbc_rectanglefill(x, y - 700 + 0, 700, 99);
+      bbc_rectanglefill(x, y - 100 + gw->yScale, 700, 100 - gw->yScale);
+      bbc_rectanglefill(x, y - 400 + gw->yScale, 700, 100 - gw->yScale);
+      bbc_rectanglefill(x, y - 700 + 0,          700, 100 - gw->yScale);
 
-      bbc_rectanglefill(x + 0   + 1, y - 300, 99, 200);
-      bbc_rectanglefill(x + 300 + 1, y - 300, 99, 200);
-      bbc_rectanglefill(x + 600 + 1, y - 300, 99, 200);
+      bbc_rectanglefill(x,                    y - 300, 100 - gw->xScale, 200);
+      bbc_rectanglefill(x + 300 + gw->xScale, y - 300, 100 - gw->xScale, 200);
+      bbc_rectanglefill(x + 600 + gw->xScale, y - 300, 100 - gw->xScale, 200);
 
-      bbc_rectanglefill(x + 0   + 1, y - 600, 99, 200);
-      bbc_rectanglefill(x + 300 + 1, y - 600, 99, 200);
-      bbc_rectanglefill(x + 600 + 1, y - 600, 99, 200);
+      bbc_rectanglefill(x,                    y - 600, 100 - gw->xScale, 200);
+      bbc_rectanglefill(x + 300 + gw->xScale, y - 600, 100 - gw->xScale, 200);
+      bbc_rectanglefill(x + 600 + gw->xScale, y - 600, 100 - gw->xScale, 200);
 
       // redraw rectangles
       
@@ -336,8 +339,10 @@ void gui_setAction(GraphicsWindow *gw, int action)
    gw->action = action & 0x7;
 }
                                            
-void gui_cacheColours(GraphicsWindow *gw)
-{
+void gui_modeChange(GraphicsWindow *gw)
+{                 
+   // re-cache colour numbers
+
    wimp_paletteword colour;
 
    colour.word = (int)0x0000FF00;
@@ -351,6 +356,11 @@ void gui_cacheColours(GraphicsWindow *gw)
 
    colour.word = (int)0xFFFFFF00;
    colourtran_return_colournumber(colour, &(gw->COLOUR_WHITE));
+
+   // determine pixels per OS co-ordinate
+
+   gw->xScale = 1 << bbc_vduvar(bbc_XEigFactor);
+   gw->yScale = 1 << bbc_vduvar(bbc_YEigFactor);
 }
 
 void gui_open(GraphicsWindow *gw, wimp_openstr *wos)
@@ -406,9 +416,9 @@ GraphicsWindow *gui_create(int nc)
       gw->circle[i].dy = velocity*sin(direction);
    }
 
-   // initialise colour numbers 
+   // initialise colour numbers etc. 
 
-   gui_cacheColours(gw);
+   gui_modeChange(gw);
    
    wimp_paletteword colour;
    
