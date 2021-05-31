@@ -9,11 +9,12 @@ Author      : Gavin Cawley
 Description : Graphics window for an application used to gain understanding of 
               colourtran_setGCOL.
   
-History     : 22/05/2021 - v1.00 - extracted from c.main
-              29/05/2021 - v1.10 - reduced flicker for legacy hardware
-              30/05/2021 - v1.11 - flicker (hopefully) further reduced
-                                   gui_cacheColours changed to gui_modeChange
-                                   as now also resets xScale and yScale.
+History     : 22/05/2021 v1.00 - extracted from c.main
+              29/05/2021 v1.10 - reduced flicker for legacy hardware
+              30/05/2021 v1.11 - flicker (hopefully) further reduced
+                                 gui_cacheColours changed to gui_modeChange
+                                 as now also resets xScale and yScale.
+              31/05/2021 v1.12 - another attempt to reduce flicker
 
 *******************************************************************************/
 
@@ -126,7 +127,7 @@ static void gui_redraw(GraphicsWindow *gw)
       gui_setColour(0x00, gw->COLOUR_BACKGROUND);
 
       bbc_rectanglefill(x, y - 100 + gw->yScale, 700, 100 - gw->yScale);
-      bbc_rectanglefill(x, y - 400 + gw->yScale, 700, 100 - gw->yScale);
+      bbc_rectanglefill(x, y - 400 + gw->yScale, 700, 100 - 2*gw->yScale);
       bbc_rectanglefill(x, y - 700 + 0,          700, 100 - gw->yScale);
 
       bbc_rectanglefill(x,                    y - 300, 100 - gw->xScale, 200);

@@ -10,7 +10,7 @@ Description : Dialog box for an application used to gain understanding of
               colourtran_setGCOL.
 
 History     : 22/05/2021 v1.00 - extracted from main.c
-              30/05/2021 v1.10 - added colout number field. 
+              30/05/2021 v1.10 - added colour number field. 
 
 *******************************************************************************/
 
